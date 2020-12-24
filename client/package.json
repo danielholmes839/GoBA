@@ -1,0 +1,19 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "client",
+  "main": "index.js",
+  "scripts": {
+    "build": "browserify ./src/index.js -o bundle.js",
+    "start": "nodemon"
+  },
+  "author": "Daniel Holmes",
+  "license": "ISC",
+  "devDependencies": {
+    "browserify": "^17.0.0"
+  },
+  "dependencies": {
+    "socket.io-client": "^3.0.4",
+    "socketio": "^1.0.0"
+  }
+}
