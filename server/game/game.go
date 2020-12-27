@@ -40,8 +40,8 @@ func NewGame(id string, tps int) *Game {
 		clients: make(map[*ws.Client]*Team),
 	}
 
-	g.teams[NewTeam()] = true
-	g.teams[NewTeam()] = true
+	g.teams[NewTeam("#ff0000")] = true
+	g.teams[NewTeam("#0000ff")] = true
 
 	return g
 }
@@ -66,7 +66,7 @@ func (game *Game) Run() {
 
 	// switch between processing game ticks, events, connecting/disconnecting clients from the game
 	ticker := time.NewTicker(time.Duration(int(time.Second) / game.tps))
-	
+
 	for {
 		select {
 		case client := <-game.add:
@@ -110,12 +110,12 @@ func (game *Game) Tick() {
 			fmt.Printf("unknown game event: %s", event.Name)
 		}
 	}
-	
+
 	// Calculate vision of other objects. broadcast to the team
 	for team := range game.teams {
-		team.Update(game)
+		team.Tick(game)
 	}
-	
+
 	//data, _ := json.Marshal(game.NewTickUpdate())
 	// game.global.Broadcast("update", data)
 }
@@ -123,13 +123,12 @@ func (game *Game) Tick() {
 // LineOfSight func
 func (game *Game) LineOfSight(line *geometry.Line) bool {
 	for _, wall := range game.walls {
-		if (line.HitsRectangle(wall.hitbox)) {
+		if line.HitsRectangle(wall.hitbox) {
 			return false
 		}
 	}
 	return true
 }
-
 
 // GetChampion of client
 func (game *Game) GetChampion(client *ws.Client) *Champion {

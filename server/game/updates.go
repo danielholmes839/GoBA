@@ -1,28 +1,31 @@
 package game
 
-// Update struct
-type Update struct {
-	Champions []*ChampionJSON `json:"champions"`
+/*
+event1: send state including all walls, bushes.
+{
+	
 }
 
-// NewTickUpdate func
-func (game *Game) NewTickUpdate() *Update {
-	updates := []*ChampionJSON{}
-	for team := range game.teams {
-		for _, champ := range team.members {
-			updates = append(updates, NewChampionJSON(champ, true))
-		}
-	}
-	return &Update{Champions: updates}
+
+event2: send champion, projectile info. 1 per team
+{
+	champions: []
 }
 
-// NewFullUpdate func
-func (game *Game) NewFullUpdate() *Update {
-	updates := []*ChampionJSON{}
-	for team := range game.teams {
-		for _, champ := range team.members {
-			updates = append(updates, NewChampionJSON(champ, true))
+event3: send info on teams
+{
+	teams {
+		id(team.number): {
+			name
+			color
 		}
 	}
-	return &Update{Champions: updates}
+	clients: {
+		id: team.number
+	}
+}
+*/
+
+func TeamUpdate() {
+
 }

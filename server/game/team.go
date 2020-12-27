@@ -16,17 +16,21 @@ type Team struct {
 }
 
 // NewTeam func
-func NewTeam() *Team {
+func NewTeam(color string) *Team {
 	return &Team{
 		events:  ws.NewSubscription("team"),
 		members: make(map[*ws.Client]*Champion),
 		size:    0,
-		color
+		color: color,
 	}
 }
 
-// Update func
-func (team *Team) Update(game *Game) {
+// Tick func
+func (team *Team) Tick(game *Game) {
+	if (team.size == 0) {
+		return
+	}
+	
 	visibleChampions := []*ChampionJSON{}
 	for _, champ := range team.members {
 		visibleChampions = append(visibleChampions, NewChampionJSON(champ, true))
