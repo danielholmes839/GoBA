@@ -40,6 +40,11 @@ func (s *Subscription) Run() {
 	}
 }
 
+// Broadcast func
+func (s *Subscription) Broadcast(event string, data []byte) {
+	s.broadcast <- NewServerEvent(s.name, event, data).Serialize()
+}
+
 // NewSubscription func
 func NewSubscription(name string) *Subscription {
 	return &Subscription{
@@ -48,9 +53,4 @@ func NewSubscription(name string) *Subscription {
 		broadcast:   make(chan []byte),
 		subscribe:   make(chan *Client),
 		unsubscribe: make(chan *Client)}
-}
-
-// Broadcast func
-func (s *Subscription) Broadcast(message []byte) {
-	s.broadcast <- message
 }

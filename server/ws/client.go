@@ -2,7 +2,7 @@ package ws
 
 import (
 	"fmt"
-	"log"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -12,8 +12,8 @@ import (
 type Client struct {
 	id            uuid.UUID
 	conn          *websocket.Conn
+	close         sync.WaitGroup
 	write         chan []byte
-	close         chan bool
 	subscriptions map[*Subscription]bool
 }
 
@@ -23,31 +23,46 @@ func NewClient(conn *websocket.Conn) *Client {
 		id:            uuid.New(),
 		conn:          conn,
 		write:         make(chan []byte),
-		close:         make(chan bool),
 		subscriptions: make(map[*Subscription]bool),
 	}
+	client.close.Add(1)
 	fmt.Printf("client:%s has connected\n", client.id)
 	return client
 }
 
-// Read func
-func (client *Client) Read() {
+// GetID func
+func (client *Client) GetID() uuid.UUID {
+	return client.id
+}
+
+// ReadMessages - read incoming messages, break when the connection is closed
+func (client *Client) ReadMessages(eventHandler EventHandler) {
 	for {
+		// Read message
 		_, message, err := client.conn.ReadMessage()
+
+		// Client disconnects
 		if err != nil {
-			log.Printf("error: %v", err)
 			client.Close()
 			break
 		}
-		log.Println(string(message))
+
+		// Get the event
+		event, _ := NewClientEvent(client, message)
+		eventHandler.Handle(event)
 	}
 }
 
-// Write func
-func (client *Client) Write() {
+// WriteMessages - write messages that are sent by subscriptions or
+func (client *Client) WriteMessages() {
 	for message := range client.write {
-		client.conn.WriteMessage(websocket.BinaryMessage, message)
+		client.conn.WriteMessage(websocket.TextMessage, message)
 	}
+}
+
+// WriteMessage - write a message to this client (ServerEvent category will always be "personal")
+func (client *Client) WriteMessage(eventName string, data []byte) {
+	client.write <- NewServerEvent("personal", eventName, data).Serialize()
 }
 
 // Subscribe func
@@ -62,24 +77,22 @@ func (client *Client) Unsubscribe(subscription *Subscription) {
 	delete(client.subscriptions, subscription)
 }
 
-// Close func
+// Wait - blocks until the client closes
+func (client *Client) Wait() {
+	client.close.Wait()
+}
+
+// Close the client
 func (client *Client) Close() {
+	// Unsubscribe
 	for subscription := range client.subscriptions {
 		client.Unsubscribe(subscription)
 	}
 
-	client.conn.Close()
+	// Close channels, connections, wait group
 	close(client.write)
+	client.conn.Close()
+	client.close.Done()
 
-	select {
-	case client.close <- true:
-	default:
-	}
 	fmt.Printf("client:%s has disconnected\n", client.id)
-}
-
-// Wait func
-// block until the websocket disconnects
-func (client *Client) Wait() {
-	<-client.close
 }
