@@ -25,6 +25,8 @@ func NewClient(conn *websocket.Conn) *Client {
 		write:         make(chan []byte, 5),
 		subscriptions: make(map[*Subscription]bool),
 	}
+
+	// Add to the wait group
 	client.close.Add(1)
 	fmt.Printf("client:%s has connected\n", client.id)
 	return client
@@ -36,24 +38,22 @@ func (client *Client) GetID() uuid.UUID {
 }
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
-func (client *Client) ReceiveMessages(eventHandler EventHandler) {
+func (client *Client) ReceiveMessages(handler EventHandler) {
 	defer client.Close()
 	for {
 		// Read message
 		_, message, err := client.conn.ReadMessage()
-
-		// Client disconnects
 		if err != nil {
 			break
 		}
 
-		// Get the event
+		// Create an event
 		event, _ := NewClientEvent(client, message)
-		eventHandler.Handle(event)
+		handler.Handle(event)
 	}
 }
 
-// WriteMessages - write messages that are sent by subscriptions or
+// WriteMessages - write messages that are sent by subscriptions or 'WriteMessage' method
 func (client *Client) WriteMessages() {
 	for message := range client.write {
 		client.conn.WriteMessage(websocket.TextMessage, message)

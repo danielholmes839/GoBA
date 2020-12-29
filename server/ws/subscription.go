@@ -13,6 +13,16 @@ type Subscription struct {
 	unsubscribe chan *Client
 }
 
+// NewSubscription func
+func NewSubscription(name string) *Subscription {
+	return &Subscription{
+		name:        name,
+		clients:     make(map[*Client]bool),
+		broadcast:   make(chan []byte),
+		subscribe:   make(chan *Client),
+		unsubscribe: make(chan *Client)}
+}
+
 // Run func
 func (s *Subscription) Run() {
 	fmt.Printf("'%s' subscription opened\n", s.name)
@@ -47,14 +57,4 @@ func (s *Subscription) Run() {
 // Broadcast func
 func (s *Subscription) Broadcast(event string, data []byte) {
 	s.broadcast <- NewServerEvent(s.name, event, data).Serialize()
-}
-
-// NewSubscription func
-func NewSubscription(name string) *Subscription {
-	return &Subscription{
-		name:        name,
-		clients:     make(map[*Client]bool),
-		broadcast:   make(chan []byte),
-		subscribe:   make(chan *Client),
-		unsubscribe: make(chan *Client)}
 }
