@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-var (
-	// UpdateEvent "Name" value
-	UpdateEvent = "UPDATE"
-)
-
 // EventHandler interface
 type EventHandler interface {
 	Handle(*ClientEvent)
@@ -20,7 +15,7 @@ type EventHandler interface {
 // ServerEvent type
 type ServerEvent struct {
 	Subscription string          `json:"subscription"`
-	Name         string          `json:"event"`
+	Name         string          `json:"name"`
 	Timestamp    int64           `json:"timestamp"`
 	Data         json.RawMessage `json:"data"`
 }

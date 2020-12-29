@@ -1,5 +1,7 @@
 package ws
 
+import "fmt"
+
 // Subscription type similar to https://github.com/gorilla/websocket/blob/master/examples/chat/hub.go
 
 // Subscription struct
@@ -13,6 +15,9 @@ type Subscription struct {
 
 // Run func
 func (s *Subscription) Run() {
+	fmt.Printf("'%s' subscription opened\n", s.name)
+	defer fmt.Printf("'%s' subscription closed\n", s.name)
+
 	for {
 		select {
 		// subscribe a client
@@ -32,8 +37,7 @@ func (s *Subscription) Run() {
 				// Send message to client
 				case client.write <- message:
 				default:
-					// Should only happen if Client.Write() stops
-					delete(s.clients, client)
+					fmt.Printf("Subscription '%s' broadcast failed to client '%s'\n", s.name, client.id)
 				}
 			}
 		}

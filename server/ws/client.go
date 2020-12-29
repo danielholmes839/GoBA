@@ -22,7 +22,7 @@ func NewClient(conn *websocket.Conn) *Client {
 	client := &Client{
 		id:            uuid.New(),
 		conn:          conn,
-		write:         make(chan []byte),
+		write:         make(chan []byte, 5),
 		subscriptions: make(map[*Subscription]bool),
 	}
 	client.close.Add(1)
@@ -35,15 +35,15 @@ func (client *Client) GetID() uuid.UUID {
 	return client.id
 }
 
-// ReadMessages - read incoming messages, break when the connection is closed
-func (client *Client) ReadMessages(eventHandler EventHandler) {
+// ReceiveMessages - read incoming messages, break when the connection is closed
+func (client *Client) ReceiveMessages(eventHandler EventHandler) {
+	defer client.Close()
 	for {
 		// Read message
 		_, message, err := client.conn.ReadMessage()
 
 		// Client disconnects
 		if err != nil {
-			client.Close()
 			break
 		}
 
