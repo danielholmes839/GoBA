@@ -1,4 +1,11 @@
-import { Wall, Team, Champion } from './game';
+import { Wall, Bush, Team, Champion } from './game';
+
+export type ClientEvent<T> = {
+    category: string;
+    event: string;
+    timestamp: number;
+    data: T;
+}
 
 export type ServerEvent<T> = {
     subscription: string;
@@ -15,7 +22,7 @@ export class TickCounter {
     constructor(id: string) {
         this.ticks = 0;
         this.timestamp = 0;
-        this.paragraph = <HTMLParagraphElement> document.getElementById(id);
+        this.paragraph = <HTMLParagraphElement>document.getElementById(id);
     }
 
     update(event: ServerEvent<void>) {
@@ -32,6 +39,7 @@ export namespace events {
     export type Setup = {
         id: string;         // the clients id
         walls: Wall[];      // the walls
+        bushes: Bush[];      // the walls
     }
 
     // Update of teams
@@ -43,6 +51,15 @@ export namespace events {
     export type Tick = {
         champions: Champion[];
     }
+}
+
+export const createEvent = (category: string, event: string, data: any): string => {
+    return JSON.stringify({
+        category: category,
+        event: event,
+        timestamp: Date.now(),
+        data: data
+    });
 }
 
 

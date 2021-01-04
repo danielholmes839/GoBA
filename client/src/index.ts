@@ -31,7 +31,6 @@ socket.onmessage = (message: MessageEvent<string>) => {
 
         case "tick":
             let tick: events.Tick = event.data;
-            console.log(tick.champions.length);
             game.tick(tick);
             ticks.update(event);
             break;
