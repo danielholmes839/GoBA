@@ -38,7 +38,7 @@ func (client *Client) GetID() uuid.UUID {
 }
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
-func (client *Client) ReceiveMessages(handler EventHandler) {
+func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 	defer client.Close()
 	for {
 		// Read message

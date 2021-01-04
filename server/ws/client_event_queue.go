@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// EventQueue - used to store events for the game
-type EventQueue struct {
+// ClientEventQueue - used to store events for the game
+type ClientEventQueue struct {
 	queue *list.List
 	lock  *sync.Mutex
 }
 
 // Events returns a channel that will be used to empty the queue. While reading no more events can be added
-func (e *EventQueue) Read() <-chan *ClientEvent {
+func (e *ClientEventQueue) Read() <-chan *ClientEvent {
 	e.lock.Lock()
 	c := make(chan *ClientEvent)
 	go func() {
@@ -28,13 +28,13 @@ func (e *EventQueue) Read() <-chan *ClientEvent {
 }
 
 // Push an event to the queue.
-func (e *EventQueue) Push(event *ClientEvent) {
+func (e *ClientEventQueue) Push(event *ClientEvent) {
 	e.lock.Lock()
 	e.queue.PushBack(event)
 	e.lock.Unlock()
 }
 
-// NewEventQueue func
-func NewEventQueue() *EventQueue {
-	return &EventQueue{queue: list.New(), lock: &sync.Mutex{}}
+// NewClientEventQueue func
+func NewClientEventQueue() *ClientEventQueue {
+	return &ClientEventQueue{queue: list.New(), lock: &sync.Mutex{}}
 }

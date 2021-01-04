@@ -1,6 +1,6 @@
 package ws
 
-// EventHandler interface
-type EventHandler interface {
+// ClientEventHandler interface
+type ClientEventHandler interface {
 	Handle(*ClientEvent)
 }
