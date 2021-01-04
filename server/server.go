@@ -32,21 +32,18 @@ func wsHandler(game *game.Game) func(w http.ResponseWriter, r *http.Request) {
 
 		client := ws.NewClient(conn)
 		go client.WriteMessages()
-		go client.ReadMessages(game)
-		game.Connect(client)		// connect client to the game
-		client.Wait() 				// block until the websocket disconnects
-		game.Disconnect(client)		// disconnect client from the game
+		go client.ReceiveMessages(game)
+		game.Connect(client)    // connect client to the game
+		client.Wait()           // block until the websocket disconnects
+		game.Disconnect(client) // disconnect client from the game
 	}
 }
 
 func main() {
-	g := game.NewGame("test-game", 30)
+	g := game.NewGame("test-game", 64)
 	go g.Run()
 
 	http.HandleFunc("/", home)
 	http.HandleFunc("/ws", wsHandler(g))
-
-	log.Println("Listening on localhost:8080")
-	http.ListenAndServe(":8080", nil)
-
+	http.ListenAndServe("localhost:8080", nil)
 }

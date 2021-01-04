@@ -1,5 +1,9 @@
 package geometry
 
+import (
+	"math"
+)
+
 // Line struct
 type Line struct {
 	p1 *Point
@@ -25,13 +29,13 @@ func (line *Line) Length2() int {
 	return distance2(line.p1, line.p2)
 }
 
-// GetPoint1 func
-func (line *Line) GetPoint1(x int, y int) *Point {
+// GetStart func
+func (line *Line) GetStart() *Point {
 	return line.p1
 }
 
-// GetPoint2 func
-func (line *Line) GetPoint2(x int, y int) *Point {
+// GetEnd func
+func (line *Line) GetEnd() *Point {
 	return line.p2
 }
 
@@ -56,14 +60,14 @@ func (line *Line) HitsLine(l *Line) bool {
 	uB := division(((p4.x-p3.x)*(p1.y-p3.y))-((p4.y-p3.y)*(p1.x-p3.x)), ((p4.y-p3.y)*(p2.x-p1.x))-((p4.x-p3.x)*(p2.y-p1.y)))
 
 	if uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1 {
-		x := int(float64(p1.x) + (uA * float64(p2.x-p1.x)))
-		y := int(float64(p1.y) + (uA * float64(p2.y-p1.y)))
+		x := int(math.Round(float64(p1.x) + (uA * float64(p2.x-p1.x))))
+		y := int(math.Round(float64(p1.y) + (uA * float64(p2.y-p1.y))))
 
 		if (x > p1.x && x > p2.x) || (x < p1.x && x < p2.x) {
 			return false
 		}
 
-		if (y > p1.y && y > p2.y) || (y < p1.y && x < p2.y) {
+		if (y > p1.y && y > p2.y) || (y < p1.y && y < p2.y) {
 			return false
 		}
 

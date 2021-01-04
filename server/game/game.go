@@ -1,47 +1,70 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"server/game/geometry"
 	"server/ws"
 	"time"
 )
 
+// Player struct
+type Player struct {
+	champion *Champion
+	team     *Team
+}
+
+// NewPlayer fucn
+func NewPlayer(client *ws.Client, team *Team) *Player {
+	return &Player{
+		champion: NewChampion(client.GetID()),
+		team:     team,
+	}
+}
+
 // Game struct
 type Game struct {
-	id     string
-	tps    int             // ticks per second target
-	add    chan *ws.Client // channel to add clients to the game
-	remove chan *ws.Client // channel to remove clients from the game
+	// Game settings
+	id  string
+	tps int
 
-	// sending, and receiving events
-	events *ws.EventQueue
-	global *ws.Subscription
+	// Add, remove clients
+	add    chan *ws.Client
+	remove chan *ws.Client
 
-	// clients, teams
-	walls   []*Wall
-	teams   map[*Team]bool
-	clients map[*ws.Client]*Team // Get the team of client
+	events *ws.ClientEventQueue // Events received are put in this queue
+	global *ws.Subscription     // Events relevant to all clients are sent on this subscription
+
+	// Game variables
+	walls  []*Wall
+	bushes []*Bush
+	teams  map[*Team]bool
+
+	clientChampions map[*ws.Client]*Champion
+	clientTeams     map[*ws.Client]*Team
 }
 
 // NewGame func
 func NewGame(id string, tps int) *Game {
 	g := &Game{
-		id:     id,
-		tps:    tps,
+		id:  id,
+		tps: tps,
+
 		add:    make(chan *ws.Client),
 		remove: make(chan *ws.Client),
-		events: ws.NewEventQueue(),
+
+		events: ws.NewClientEventQueue(),
 		global: ws.NewSubscription("global-events"),
 
-		walls:   []*Wall{NewWall(500, 500, 500, 100), NewWall(100, 100, 500, 100)},
-		teams:   make(map[*Team]bool),
-		clients: make(map[*ws.Client]*Team),
+		walls:  []*Wall{NewWall(0, 1500, 2000, 200), NewWall(700, 600, 500, 100), NewWall(100, 100, 500, 100)},
+		bushes: []*Bush{NewBush(700, 800, 500, 400), NewBush(100, 300, 500, 400)},
+
+		teams:           make(map[*Team]bool),
+		clientChampions: make(map[*ws.Client]*Champion),
+		clientTeams:     make(map[*ws.Client]*Team),
 	}
 
-	g.teams[NewTeam("#ff0000")] = true
-	g.teams[NewTeam("#0000ff")] = true
+	g.teams[NewTeam("0", "#ff0000")] = true
+	g.teams[NewTeam("1", "#0000ff")] = true
 
 	return g
 }
@@ -71,77 +94,100 @@ func (game *Game) Run() {
 		select {
 		case client := <-game.add:
 			// Connect clients
-			team := game.GetSmallestTeam()
-			team.AddClient(client, NewChampion(client.GetID()))
-			client.Subscribe(game.global)
-			game.clients[client] = team
-
-			walls := []*WallJSON{}
-			for _, wall := range game.walls {
-				walls = append(walls, NewWallJSON(wall))
-			}
-			data, _ := json.Marshal(walls)
-			client.WriteMessage("walls", data)
+			game.addClient(client)
 
 		case client := <-game.remove:
 			// Disconnect clients
-			team := game.GetTeam(client)
-			team.RemoveClient(client)
-			client.Unsubscribe(game.global)
-			delete(game.clients, client)
+			game.removeClient(client)
 
 		case <-ticker.C:
 			// Game Loop
-			game.Tick()
+			game.tick()
 		}
 	}
 }
 
 // Tick func
-func (game *Game) Tick() {
+func (game *Game) tick() {
 	// Empty the event queue
 	for event := range game.events.Read() {
-		champ := game.GetChampion(event.Client)
+		champ := game.getClientChampion(event.Client)
 		switch event.Name {
-		case "move-event":
-			champ.MoveEvent(event)
-			champ.health -= 5
+		case "move":
+			champ.setMovementDirection(event)
 		default:
-			fmt.Printf("unknown game event: %s", event.Name)
+			fmt.Printf("unknown game event name: '%s'\n", event.Name)
 		}
 	}
 
-	// Calculate vision of other objects. broadcast to the team
-	for team := range game.teams {
-		team.Tick(game)
+	for _, champ := range game.clientChampions {
+		champ.move(game)
 	}
 
-	//data, _ := json.Marshal(game.NewTickUpdate())
-	// game.global.Broadcast("update", data)
+	// Team tick
+	for team := range game.teams {
+		team.tick(game)
+	}
 }
 
-// LineOfSight func
-func (game *Game) LineOfSight(line *geometry.Line) bool {
+func (game *Game) hasLineOfSight(line *geometry.Line) bool {
 	for _, wall := range game.walls {
 		if line.HitsRectangle(wall.hitbox) {
 			return false
 		}
 	}
+
+	for _, bush := range game.bushes {
+		sourceInBush := line.GetStart().HitsRectangle(bush.hitbox)
+		targetInBush := line.GetEnd().HitsRectangle(bush.hitbox)
+
+		if targetInBush && sourceInBush {
+			// Both in the same bush then the bush has no effect
+			continue
+		}
+
+		if targetInBush && !sourceInBush {
+			// The target is in the bush but the source is not. There is no line of line of sight
+			return false
+		}
+
+		if !targetInBush && !sourceInBush && line.HitsRectangle(bush.hitbox) {
+			// The bush is acting as a wall
+			return false
+		}
+	}
+
 	return true
 }
 
-// GetChampion of client
-func (game *Game) GetChampion(client *ws.Client) *Champion {
-	return game.GetTeam(client).GetChampion(client)
+// Connect func
+func (game *Game) Connect(client *ws.Client) {
+	game.add <- client
 }
 
-// GetTeam of client
-func (game *Game) GetTeam(client *ws.Client) *Team {
-	return game.clients[client]
+// Disconnect func
+func (game *Game) Disconnect(client *ws.Client) {
+	game.remove <- client
 }
 
-// GetSmallestTeam the team with lowest number of players
-func (game *Game) GetSmallestTeam() *Team {
+func (game *Game) getClientChampion(client *ws.Client) *Champion {
+	return game.clientChampions[client]
+}
+
+func (game *Game) getClientTeam(client *ws.Client) *Team {
+	return game.clientTeams[client]
+}
+
+func (game *Game) setClientChampion(client *ws.Client, champion *Champion) {
+	game.clientChampions[client] = champion
+}
+
+func (game *Game) setClientTeam(client *ws.Client, team *Team) {
+	game.clientTeams[client] = team
+}
+
+// Get the team with lowest number of players
+func (game *Game) getNextTeam() *Team {
 	var min *Team = nil
 	for team := range game.teams {
 		if min == nil {
@@ -153,12 +199,29 @@ func (game *Game) GetSmallestTeam() *Team {
 	return min
 }
 
-// Connect func
-func (game *Game) Connect(client *ws.Client) {
-	game.add <- client
+func (game *Game) addClient(client *ws.Client) {
+	client.Subscribe(game.global)
+	client.WriteMessage("setup", NewSetupUpdate(game, client))
+
+	champion := NewChampion(client.GetID())
+	team := game.getNextTeam()
+
+	team.addClient(client, champion)
+	game.setClientChampion(client, champion)
+	game.setClientTeam(client, team)
+
+	// Send clients the updated teams
+	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
 }
 
-// Disconnect func
-func (game *Game) Disconnect(client *ws.Client) {
-	game.remove <- client
+func (game *Game) removeClient(client *ws.Client) {
+	client.Unsubscribe(game.global)
+	team := game.getClientTeam(client)
+
+	team.removeClient(client)
+	delete(game.clientChampions, client)
+	delete(game.clientTeams, client)
+
+	// Send clients the updated teams
+	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
 }

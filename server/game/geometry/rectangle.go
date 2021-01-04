@@ -43,9 +43,9 @@ func (rect *Rectangle) HitsLine(l *Line) bool {
 func (rect *Rectangle) HitsRectangle(r *Rectangle) bool {
 	r1 := rect
 	r2 := r
-	return (r1.p.x+r1.w >= r2.p.x ||
-		r1.p.x <= r2.p.x+r2.w ||
-		r1.p.y+r1.h >= r2.p.y ||
+	return (r1.p.x+r1.w >= r2.p.x &&
+		r1.p.x <= r2.p.x+r2.w &&
+		r1.p.y+r1.h >= r2.p.y &&
 		r1.p.y <= r2.p.y+r2.h)
 }
 

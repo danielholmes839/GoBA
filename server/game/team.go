@@ -1,81 +1,74 @@
 package game
 
 import (
-	"encoding/json"
 	"server/game/geometry"
 	"server/ws"
 )
 
 // Team struct
 type Team struct {
-	number  int
+	name    string
+	color   string
+	size    int
 	events  *ws.Subscription
 	members map[*ws.Client]*Champion
-	size    int
-	color   string
 }
 
 // NewTeam func
-func NewTeam(color string) *Team {
+func NewTeam(name string, color string) *Team {
 	return &Team{
-		events:  ws.NewSubscription("team"),
-		members: make(map[*ws.Client]*Champion),
-		size:    0,
+		name: name,
 		color: color,
+		size: 0,
+		events:  ws.NewSubscription("team-events"),
+		members: make(map[*ws.Client]*Champion),
 	}
 }
 
 // Tick func
-func (team *Team) Tick(game *Game) {
-	if (team.size == 0) {
-		return
-	}
-	
+func (team *Team) tick(game *Game) {
 	visibleChampions := []*ChampionJSON{}
 	for _, champ := range team.members {
-		visibleChampions = append(visibleChampions, NewChampionJSON(champ, true))
+		visibleChampions = append(visibleChampions, NewChampionJSON(champ))
 	}
 
-	for otherTeam := range game.teams { // for every other team
-		if otherTeam != team {
-			for _, otherChampion := range otherTeam.members { // for every champion of the other team
-				visible := false
-				p1 := otherChampion.hitbox.GetPosition()
-				for _, teamChampion := range team.members {
-					p2 := teamChampion.hitbox.GetPosition()
-					line := geometry.NewLine(p1.GetX(), p1.GetY(), p2.GetX(), p2.GetY())
-					if game.LineOfSight(line) {
-						visible = true
-						break
-					}
-				}
+	for otherTeam := range game.teams { 						// for every other team
+		if otherTeam == team {
+			continue
+		}
 
-				visibleChampions = append(visibleChampions, NewChampionJSON(otherChampion, visible))
+		for _, otherChampion := range otherTeam.members { // for every champion of the other teame
+			p2 := otherChampion.hitbox.GetPosition()		// Line end point
+			for _, teamChampion := range team.members {
+				p1 := teamChampion.hitbox.GetPosition()
+				line := geometry.NewLine(p1.GetX(), p1.GetY(), p2.GetX(), p2.GetY())
+				if game.hasLineOfSight(line) {
+					visibleChampions = append(visibleChampions, NewChampionJSON(otherChampion))
+					break
+				}
 			}
 		}
 	}
 
-	data, _ := json.Marshal(&Update{Champions: visibleChampions})
-	team.events.Broadcast("update", data)
+	team.events.Broadcast("tick", NewTickUpdate(visibleChampions))
 }
 
-// AddClient to team
-func (team *Team) AddClient(client *ws.Client, champ *Champion) {
+// AddPlayer to team
+func (team *Team) addClient(client *ws.Client, champion *Champion) {
 	client.Subscribe(team.events)
-	team.members[client] = champ
+	team.members[client] = champion
 	team.size++
 }
 
-// RemoveClient client from team
-func (team *Team) RemoveClient(client *ws.Client) *Champion {
-	temp := team.members[client]
+// RemovePlayer from team
+func (team *Team) removeClient(client *ws.Client) {
 	client.Unsubscribe(team.events)
 	delete(team.members, client)
 	team.size--
-	return temp
 }
 
-// GetChampion func
-func (team *Team) GetChampion(client *ws.Client) *Champion {
-	return team.members[client]
+// TeamJSON struct
+type TeamJSON struct {
+	Color string `json:"color"`
+	Size  int    `json:"size"`
 }

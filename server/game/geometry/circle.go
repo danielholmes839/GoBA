@@ -36,7 +36,9 @@ func (circle *Circle) OverlapsLine(l *Line) bool {
 // HitsRectangle func
 func (circle *Circle) HitsRectangle(r *Rectangle) bool {
 	c := circle.p
-	var x, y int 
+	x := circle.p.x
+	y := circle.p.y
+	
 	if (c.x < r.p.x) {
 		x = r.p.x
 	} else if (c.x > r.p.x + r.w) {

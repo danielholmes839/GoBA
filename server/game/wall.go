@@ -12,11 +12,6 @@ func NewWall(x int, y int, w int, h int) *Wall {
 	return &Wall{hitbox: geometry.NewRectangle(x, y, w, h)}
 }
 
-// GetHitBox func
-func (wall *Wall) GetHitBox() *geometry.Rectangle {
-	return wall.hitbox
-}
-
 // WallJSON struct
 type WallJSON struct {
 	X int `json:"x"`

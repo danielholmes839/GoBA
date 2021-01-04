@@ -1,31 +1,76 @@
 package game
 
-/*
-event1: send state including all walls, bushes.
-{
-	
+import (
+	"encoding/json"
+	"server/ws"
+)
+
+// ################ UPDATES ################### //
+
+// SetupUpdate struct - initial update sent to clients
+type SetupUpdate struct {
+	ID     string      `json:"id"`
+	Walls  []*WallJSON `json:"walls"`
+	Bushes []*BushJSON `json:"bushes"`
 }
 
+// NewSetupUpdate struct
+func NewSetupUpdate(game *Game, client *ws.Client) []byte {
+	walls := make([]*WallJSON, len(game.walls))
+	for i, wall := range game.walls {
+		walls[i] = NewWallJSON(wall)
+	}
 
-event2: send champion, projectile info. 1 per team
-{
-	champions: []
+	bushes := make([]*BushJSON, len(game.bushes))
+	for i, bush := range game.bushes {
+		bushes[i] = NewBushJSON(bush)
+	}
+
+	data, _ := json.Marshal(&SetupUpdate{
+		ID:    client.GetID().String(),
+		Walls: walls,
+		Bushes: bushes,
+	})
+
+	return data
 }
 
-event3: send info on teams
-{
-	teams {
-		id(team.number): {
-			name
-			color
+// TeamsUpdate struct
+type TeamsUpdate struct {
+	Teams   map[string]*TeamJSON `json:"teams"`   // team-name: { color, size }
+	Clients map[string]string    `json:"clients"` // id: team-name
+}
+
+// NewTeamsUpdate func
+func NewTeamsUpdate(game *Game) []byte {
+	r := &TeamsUpdate{
+		Teams:   make(map[string]*TeamJSON),
+		Clients: make(map[string]string),
+	}
+
+	for team := range game.teams {
+		r.Teams[team.name] = &TeamJSON{Color: team.color, Size: team.size}
+
+		for client := range team.members {
+			r.Clients[client.GetID().String()] = team.name
 		}
 	}
-	clients: {
-		id: team.number
-	}
+
+	data, _ := json.Marshal(r)
+	return data
 }
-*/
 
-func TeamUpdate() {
+// TickUpdate struct
+type TickUpdate struct {
+	Champions []*ChampionJSON `json:"champions"`
+}
 
+// NewTickUpdate func
+func NewTickUpdate(champions []*ChampionJSON) []byte {
+	r := &TickUpdate{
+		Champions: champions,
+	}
+
+	data, _ := json.Marshal(r)
+	return data
 }
