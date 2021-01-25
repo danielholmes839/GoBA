@@ -1,4 +1,4 @@
-import { Wall, Bush, Team, Champion } from './game';
+import { Wall, Bush, Team, Champion, Projectile } from './gameplay';
 
 export type ClientEvent<T> = {
     category: string;
@@ -17,17 +17,18 @@ export type ServerEvent<T> = {
 export class TickCounter {
     ticks: number;
     timestamp: number;
-    paragraph: HTMLParagraphElement;
+    app: any;
 
-    constructor(id: string) {
+    constructor(app: any) {
         this.ticks = 0;
         this.timestamp = 0;
-        this.paragraph = <HTMLParagraphElement>document.getElementById(id);
+        this.app = app;
+        console.log(app);
     }
 
     update(event: ServerEvent<void>) {
         if (event.timestamp != this.timestamp) {
-            this.paragraph.innerHTML = `TPS: ${this.ticks}`;
+            this.app.updateTPS(`TPS: ${this.ticks}`);
             this.timestamp = event.timestamp;
             this.ticks = 0;
         }
@@ -50,6 +51,7 @@ export namespace events {
 
     export type Tick = {
         champions: Champion[];
+        projectiles: Projectile[];
     }
 }
 

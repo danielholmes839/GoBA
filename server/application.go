@@ -1,19 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"os"
 
-	"server/game"
+	game "server/gameplay"
 	"server/ws"
 
 	"github.com/gorilla/websocket"
 )
-
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Home")
-}
 
 func wsHandler(game *game.Game) func(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
@@ -40,10 +36,19 @@ func wsHandler(game *game.Game) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	g := game.NewGame("test-game", 64)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5000"
+	}
+
+	g := game.NewGame(64)
 	go g.Run()
 
-	http.HandleFunc("/", home)
+	// Game websocket connection
 	http.HandleFunc("/ws", wsHandler(g))
-	http.ListenAndServe("localhost:8080", nil)
+	// Files
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/public/", http.StripPrefix("/public/", fs))
+
+	http.ListenAndServe(":"+port, nil)
 }

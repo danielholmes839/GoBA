@@ -1,32 +1,41 @@
-package game
+package gameplay
 
 import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"server/game/geometry"
+	"server/gameplay/geometry"
 	"server/ws"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 // Champion struct
 type Champion struct {
-	id     uuid.UUID
-	hitbox *geometry.Circle
-	target *geometry.Point // moving towards this position
-	health int
-	speed  int
-	stop   int
+	id        uuid.UUID
+	hitbox    *geometry.Circle
+	target    *geometry.Point // moving towards this position
+	maxHealth int
+	health    int
+	speed     int
+	stop      int
+
+	shootCooldown *Cooldown
+	dashCooldown  *Cooldown
 }
 
 // NewChampion func
 func NewChampion(id uuid.UUID) *Champion {
 	return &Champion{
-		id:     id,
-		hitbox: geometry.NewCircle(50, 50, 50),
-		health: 100,
-		speed:  400, // units per second
+		id:        id,
+		hitbox:    geometry.NewCircle(1500, 1500, 75),
+		maxHealth: 100,
+		health:    100,
+		speed:     700, // units per second
+
+		shootCooldown: NewCooldown(time.Second / 10),
+		dashCooldown:  NewCooldown(time.Second * 2),
 	}
 }
 
@@ -41,14 +50,39 @@ func (champ *Champion) setMovementDirection(event *ws.ClientEvent) {
 	champ.target = geometry.NewPoint(movement.X, movement.Y)
 }
 
-func direction(a int) int {
-	if a == 0 {
-		return 0
-	} else if a < 0 {
-		return -1
-	} else {
-		return 1
+func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
+	if !champ.shootCooldown.isReady() {
+		return
 	}
+
+	go champ.shootCooldown.start()
+
+	data := &ChampionShootEvent{}
+	if err := json.Unmarshal(event.GetData(), data); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	team := game.getClientTeam(event.Client)
+	origin := champ.hitbox.GetPosition().Copy()
+	target := geometry.NewPoint(data.X, data.Y)
+
+	projectile := NewProjectile(origin, target, game, team)
+	team.projectiles[projectile] = struct{}{}
+}
+
+func (champ *Champion) dash() {
+	if !champ.dashCooldown.isReady() {
+		return
+	}
+
+	go champ.dashCooldown.start()
+	champ.speed *= 3
+
+	go func() {
+		time.Sleep(time.Second / 5)
+		champ.speed /= 3
+	}()
 }
 
 // Move func
@@ -103,23 +137,5 @@ func (champ *Champion) move(game *Game) {
 
 		champ.hitbox.GetPosition().Shift(-speedX, 0)
 		champ.target = nil
-	}
-}
-
-// ChampionJSON struct
-type ChampionJSON struct {
-	ID      uuid.UUID `json:"id"`
-	Health  int       `json:"health"`
-	X       int       `json:"x"`
-	Y       int       `json:"y"`
-}
-
-// NewChampionJSON func
-func NewChampionJSON(champ *Champion) *ChampionJSON {
-	return &ChampionJSON{
-		ID:      champ.id,
-		Health:  champ.health,
-		X:       champ.hitbox.GetPosition().GetX(),
-		Y:       champ.hitbox.GetPosition().GetY(),
 	}
 }

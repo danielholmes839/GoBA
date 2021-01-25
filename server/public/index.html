@@ -11,16 +11,12 @@
 <body>
     <div id="app">
         <h1>{{ title }}</h1>
-        <ul>
-            <li v-for="(team, name) in teams" style="list-style-type:none;">
-                Team: {{ name }} - Players: {{ team.size }}
-            </li>
-        </ul>
-        <p id="tps">{{ tps }}</p>
-        <canvas id="canvas" width="1200" height="800" style="border:1px solid black;"></canvas>
+        <p id="tps">TPS: 0</p>
     </div>
 
+    <canvas id="canvas" width="1200" height="800" style="border:1px solid black;">
 
+    </canvas>
 </body>
 <script src="./dist/bundle.js"></script>
 

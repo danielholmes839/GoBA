@@ -33,6 +33,11 @@ func (point *Point) Move(x int, y int) {
 	point.y = y
 }
 
+// Copy func
+func (point *Point) Copy() *Point {
+	return NewPoint(point.x, point.y)
+}
+
 // Distance2 (distance squared between two points)
 func (point *Point) Distance2(point2 *Point) int {
 	return distance2(point, point2)

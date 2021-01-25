@@ -3,15 +3,16 @@ html, body {
   height: 100%;
 }
 
-* {
+h1 {
     color:#ffff00e5;
 }
 
-h1 {
-  font-family: 'Press Start 2P', cursive;
+p {
+    color:#ffff00e5;
 }
 
 body {
+  
+  font-family: 'Press Start 2P', cursive;
   background: #0f0a1e;
-  font-family: Helvetica, sans-serif;
 }
