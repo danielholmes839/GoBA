@@ -18,6 +18,7 @@ type Game struct {
 	// Game settings
 	tps       int
 	permanent bool
+	stopped   bool
 
 	// Add, remove clients
 	connect     chan *ws.Client
@@ -41,6 +42,7 @@ func NewGame(tps int, permanent bool) *Game {
 	g := &Game{
 		tps:         tps,
 		permanent:   permanent,
+		stopped:     false,
 		connect:     make(chan *ws.Client),
 		disconnect:  make(chan *ws.Client),
 		stop:        make(chan bool),
@@ -90,13 +92,15 @@ func (game *Game) Handle(event *ws.ClientEvent) {
 // Run func
 func (game *Game) Run() {
 	defer func() {
-		game.global.Close()
-		for team := range game.teams {
-			team.events.Close()
-		}
 		for client := range game.clients {
 			game.disconnectClient(client)
 		}
+
+		for team := range game.teams {
+			team.events.Close()
+		}
+
+		game.global.Close()
 	}()
 
 	// switch between processing game ticks, events, connecting/disconnecting clients from the game
@@ -141,9 +145,15 @@ func (game *Game) Disconnect(client *ws.Client) {
 
 // Stop the game
 func (game *Game) Stop() bool {
+	if game.stopped {
+		return true
+	}
+
 	if game.permanent {
 		return false
 	}
+
+	game.stopped = true
 	game.stop <- true
 	return true
 }
@@ -165,11 +175,11 @@ func (game *Game) connectClient(client *ws.Client) {
 }
 
 func (game *Game) disconnectClient(client *ws.Client) {
-	// Remove client from the game
-	delete(game.usernames, client.GetName())
-	client.Unsubscribe(game.global)
-	game.getClientTeam(client).removeClient(client)
-	delete(game.clients, client)
+	// Disconnect the client
+	game.getClientTeam(client).removeClient(client) // Remove client from team
+	delete(game.usernames, client.GetName())        // Remove client username from the game
+	delete(game.clients, client)                    // Remove client from game
+	client.Close()
 
 	// Send clients the updated teams
 	game.global.Broadcast("update-teams", NewTeamsUpdate(game))

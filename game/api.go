@@ -97,7 +97,7 @@ func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		// Stop the game after 10 minutes
-		time.Sleep(time.Minute * 10)
+		time.Sleep(time.Second * 5)
 		game.Stop()
 		delete(mgr.games, code)
 	}()

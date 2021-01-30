@@ -15,7 +15,8 @@ type Client struct {
 	conn          *websocket.Conn
 	write         chan []byte
 	writing       *sync.Mutex
-	closed        *sync.WaitGroup
+	closed        bool
+	closedWg      *sync.WaitGroup
 	subscriptions map[*Subscription]bool
 }
 
@@ -27,12 +28,12 @@ func NewClient(conn *websocket.Conn, name string) *Client {
 		conn:          conn,
 		write:         make(chan []byte),
 		writing:       &sync.Mutex{},
-		closed:        &sync.WaitGroup{},
+		closedWg:      &sync.WaitGroup{},
 		subscriptions: make(map[*Subscription]bool),
 	}
 
 	// Add to the wait group
-	client.closed.Add(1)
+	client.closedWg.Add(1)
 	fmt.Printf("client:%s has connected\n", client.id)
 	return client
 }
@@ -56,11 +57,11 @@ func (client *Client) WriteMessages() {
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
 func (client *Client) ReceiveMessages(handler ClientEventHandler) {
-	defer client.Close()
 	for {
 		// Read message
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
+			client.Close()
 			break
 		}
 
@@ -91,11 +92,16 @@ func (client *Client) Unsubscribe(subscription *Subscription) {
 
 // Wait - blocks until the client closes
 func (client *Client) Wait() {
-	client.closed.Wait()
+	client.closedWg.Wait()
 }
 
 // Close the client
 func (client *Client) Close() {
+	if client.closed {
+		return
+	}
+	client.closed = true
+	
 	client.writing.Lock()
 	defer client.writing.Unlock()
 
@@ -105,7 +111,7 @@ func (client *Client) Close() {
 
 	close(client.write)
 	client.conn.Close()
-	client.closed.Done()
+	client.closedWg.Done()
 
 	fmt.Printf("client:%s has disconnected\n", client.id)
 }
