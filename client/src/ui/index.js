@@ -38,7 +38,7 @@ let app = new Vue({
 
             axios.get(`http://${host}/create?name=${name}`).then(result => {
                 this.code = result.data.code;
-    
+
                 if (result.data.success) {
                     this.createGameJoin(this.code, name);
                 } else {
@@ -48,7 +48,7 @@ let app = new Vue({
             });
         },
 
-        createGameJoin: function(code, name) {
+        createGameJoin: function (code, name) {
             let url = `ws://${host}/join?code=${code}&name=${name}`;
             let socket = new WebSocket(url);
 

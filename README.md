@@ -14,8 +14,8 @@ In games like League of Legends and Dota their is a vision system to determine w
 - bushes are green
 - walls are gray
 
-![1](screenshots/1.PNG)
+![1](client/screenshots/1.PNG)
 
-![2](screenshots/2.PNG)
+![2](client/screenshots/2.PNG)
 
-![3](screenshots/3.PNG)
+![3](client/screenshots/3.PNG)

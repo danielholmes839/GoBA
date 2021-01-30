@@ -9,9 +9,9 @@ import (
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5000"
+		port = ":5000"
 	}
-	
+
 	mgr := game.NewGameManager()
 	mgr.CreateGame("TEST")
 
@@ -21,8 +21,12 @@ func main() {
 	http.HandleFunc("/info", mgr.InfoAPI)
 
 	// Files
-	fs := http.FileServer(http.Dir("./public"))
-	http.Handle("/public/", http.StripPrefix("/public/", fs))
+	fs := http.FileServer(http.Dir("./client"))
+	http.Handle("/client/", http.StripPrefix("/client/", fs))
+	http.HandleFunc("/game", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./client/index.html")
+	})
 
-	http.ListenAndServe(":"+port, nil)
+	// Listen
+	http.ListenAndServe(port, nil)
 }

@@ -1,0 +1,14 @@
+.ebignore
+.git
+.gitignore
+.elasticbeanstalk
+README.md
+
+client/node_modules
+client/src
+client/screenshots
+client/debug.log
+client/tsconfig.json
+client/webpack.config.js
+client/package-lock.json
+client/package.json
