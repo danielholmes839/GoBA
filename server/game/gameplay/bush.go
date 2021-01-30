@@ -1,6 +1,6 @@
 package gameplay
 
-import "server/gameplay/geometry"
+import "server/game/gameplay/geometry"
 
 // Bush struct
 type Bush struct {

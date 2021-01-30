@@ -23,7 +23,6 @@ export class TickCounter {
         this.ticks = 0;
         this.timestamp = 0;
         this.app = app;
-        console.log(app);
     }
 
     update(event: ServerEvent<void>) {

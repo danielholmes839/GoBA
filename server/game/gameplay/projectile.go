@@ -1,8 +1,8 @@
 package gameplay
 
 import (
+	"server/game/gameplay/geometry"
 	"math"
-	"server/gameplay/geometry"
 )
 
 // Projectile struct

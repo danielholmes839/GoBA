@@ -1,6 +1,6 @@
 package gameplay
 
-import "server/gameplay/geometry"
+import "server/game/gameplay/geometry"
 
 // Wall struct
 type Wall struct {

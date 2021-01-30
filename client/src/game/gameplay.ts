@@ -26,7 +26,7 @@ export type Bush = Rectangle;
 
 class Screen {
     private canvas: HTMLCanvasElement;
-    private ctx: Context2D;
+    public ctx: Context2D;
     public centerX: number;
     public centerY: number;
     public dx: number;
@@ -35,10 +35,19 @@ class Screen {
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
-        this.ctx = <Context2D>this.canvas.getContext("2d", { alpha: false });
         this.centerX = this.canvas.width / 2;
         this.centerY = this.canvas.height / 2;
 
+        const reset = () => {
+            canvas.width = canvas.getBoundingClientRect().width;
+            canvas.height = canvas.getBoundingClientRect().height;
+            this.centerX = this.canvas.width / 2;
+            this.centerY = this.canvas.height / 2;
+        }
+        window.onresize = reset;
+        reset()
+
+        this.ctx = <Context2D>this.canvas.getContext("2d", { alpha: false });
         this.zoom = 1;
         this.dx = 100;
         this.dy = 100;
@@ -77,10 +86,12 @@ class Screen {
     }
 
     /* Draw rect with game position and scale */
-    drawRect(x: number, y: number, w: number, h: number, color: string, alpha: number = 1) {
-        [x, y] = this.transformGamePosition(x, y);
-        w *= this.zoom;
-        h *= this.zoom;
+    drawRect(x: number, y: number, w: number, h: number, color: string, alpha: number = 1, transform: boolean = true) {
+        if (transform) {
+            [x, y] = this.transformGamePosition(x, y);
+            w *= this.zoom;
+            h *= this.zoom;
+        }
 
         this.ctx.strokeStyle = color;
         this.ctx.globalAlpha = alpha;
@@ -200,12 +211,54 @@ class Map {
     }
 }
 
+export class Ability {
+    private static x: number = 20;
+    private static y: number = 820;
+    private static size: number = 50;
+    private static separation: number = 20;
+
+    public name: string;
+    public maxTicks: number;
+    public currentTicks: number;
+
+    constructor(name: string, cooldownSeconds: number) {
+        let tps = 64
+        this.name = name;
+        this.maxTicks = Math.round(tps * cooldownSeconds);
+        this.currentTicks = this.maxTicks;
+    }
+
+    tick() {
+        this.currentTicks = Math.min(this.maxTicks, this.currentTicks + 1);
+    }
+
+    start() {
+        if (this.currentTicks === this.maxTicks) {
+            this.currentTicks = 0;
+        }
+    }
+
+    draw(screen: Screen, i: number) {
+        let x = (i * (Ability.size + Ability.separation)) + Ability.x;
+        let percent = this.currentTicks / this.maxTicks;
+        let offset = Ability.size * (1 - percent);
+
+        screen.drawRect(x, Ability.y, Ability.size, Ability.size, "#000000", 1, false);
+        screen.drawRect(x, Ability.y + offset, Ability.size, Ability.size * percent, "#FFFF00", 1, false);
+        screen.ctx.font = `40px 'Courier New', monospace`;
+        screen.ctx.strokeStyle = "#333333";
+        screen.ctx.fillStyle = "#333333";
+        screen.ctx.fillText(this.name, x + 10, Ability.y + 35)
+    }
+}
+
 export class Champion {
     private static allyHealth: string = "#00ff00";
     private static enemyHealth: string = "#ff0000";
     private static clientHealth: string = "#ffff00";
 
     public id: string;
+    public name: string;
     public x: number;
     public y: number;
     public r: number;
@@ -213,8 +266,9 @@ export class Champion {
     public maxHealth: number;
 
 
-    constructor(id: string, health: number, x: number, y: number, r: number) {
+    constructor(id: string, name: string, health: number, x: number, y: number, r: number) {
         this.id = id;
+        this.name = name;
         this.x = x;
         this.y = y;
         this.r = r;
@@ -237,13 +291,13 @@ export class Champion {
 
         screen.drawRect(this.x - this.r, this.y - (this.r + 30), this.r * 2, 20, "#000000");
         screen.drawRect(this.x - this.r, this.y - (this.r + 30), this.r * 2 * (this.health / this.maxHealth), 20, color);
-        screen.drawText(this.x - this.r, this.y - (this.r + 40), this.id);
+        screen.drawText(this.x - this.r, this.y - (this.r + 40), this.name);
     }
 }
 
 export class Game {
-    private canvas: HTMLCanvasElement;
     private socket: WebSocket;
+    private canvas: HTMLCanvasElement;
     private screen: Screen;
     private map: Map;
     private client: string;                     // client id
@@ -255,10 +309,11 @@ export class Game {
     public bushes: Bush[];
     public champions: Champion[];
     public projectiles: Projectile[];
+    public abilities: Ability[];
 
     constructor(setup: events.Setup, canvas: HTMLCanvasElement, socket: WebSocket) {
-        this.canvas = canvas;
         this.socket = socket;
+        this.canvas = canvas;
         this.screen = new Screen(canvas);
         this.map = new Map(canvas.width - 200, canvas.height - 200, 200, canvas);
         this.client = setup.id;
@@ -270,6 +325,7 @@ export class Game {
         this.teams = {};
         this.clients = {};
         this.setOnClicks();
+        this.abilities = [new Ability("Q", 0.1), new Ability("W", 2)]
     }
 
     tick(t: events.Tick) {
@@ -282,7 +338,7 @@ export class Game {
         // Update information from the tick
         this.projectiles = t.projectiles;
         this.champions = t.champions.map(c => {
-            return Object.assign(new Champion("", 0, 0, 0, 0), c)
+            return Object.assign(new Champion("", "", 0, 0, 0, 0), c)
         });
 
         if (this.cameraLockOn) {
@@ -291,10 +347,6 @@ export class Game {
 
         this.draw(stealthed);
         this.map.draw(this);
-
-        this.champions.forEach(({ x, y }) => {
-            this.screen.drawLine(x, y, client.x, client.y, "#000000")
-        })
     }
 
     updateTeams({ teams, clients }: events.TeamUpdate) {
@@ -328,6 +380,11 @@ export class Game {
         if (stealthed) {
             this.screen.drawStealth();
         }
+
+        this.abilities.forEach((ability, index) => {
+            ability.tick();
+            ability.draw(this.screen, index);
+        })
     }
 
     championIsClient(champion: Champion): boolean {
@@ -355,16 +412,17 @@ export class Game {
         }
 
         window.onkeydown = (e: KeyboardEvent) => {
-            console.log(x, y);
             switch (e.keyCode) {
                 case 89:
                     this.cameraLockOn = !this.cameraLockOn;
                     break;
                 case 81:
+                    this.abilities[0].start()
                     let [x_new, y_new] = this.screen.transformCanvasPosition(x, y);
                     this.socket.send(createEvent("game", "shoot", { x: x_new, y: y_new }));
                     break;
                 case 87:
+                    this.abilities[1].start()
                     this.socket.send(createEvent("game", "dash", {}))
                     break;
             }
@@ -386,7 +444,7 @@ export class Game {
             e.preventDefault();
             e.stopPropagation();
             let zoom = this.screen.zoom + (-.15 * (e.deltaY / Math.abs(e.deltaY)));
-            this.screen.zoom = Math.min(2, Math.max(0.25, + (zoom)));
+            this.screen.zoom = Math.min(2, Math.max(0.35, + (zoom)));
         });
     }
 }

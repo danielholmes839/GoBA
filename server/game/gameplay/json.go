@@ -1,6 +1,8 @@
 package gameplay
 
 import (
+	"server/ws"
+
 	"github.com/google/uuid"
 )
 
@@ -48,6 +50,7 @@ func NewBushJSON(bush *Bush) *BushJSON {
 // ChampionJSON struct
 type ChampionJSON struct {
 	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
 	Health int       `json:"health"`
 	Radius int       `json:"r"`
 	X      int       `json:"x"`
@@ -55,9 +58,10 @@ type ChampionJSON struct {
 }
 
 // NewChampionJSON func
-func NewChampionJSON(champ *Champion) *ChampionJSON {
+func NewChampionJSON(client *ws.Client, champ *Champion) *ChampionJSON {
 	return &ChampionJSON{
 		ID:     champ.id,
+		Name:   client.GetName(),
 		Health: champ.health,
 		Radius: champ.hitbox.GetRadius(),
 		X:      champ.hitbox.GetPosition().GetX(),

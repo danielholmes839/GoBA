@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"server/gameplay/geometry"
+	"server/game/gameplay/geometry"
 	"server/ws"
 	"time"
 

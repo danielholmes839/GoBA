@@ -8,6 +8,7 @@ import "fmt"
 type Subscription struct {
 	name        string
 	clients     map[*Client]bool
+	close       chan bool
 	broadcast   chan []byte
 	subscribe   chan *Client
 	unsubscribe chan *Client
@@ -15,12 +16,15 @@ type Subscription struct {
 
 // NewSubscription func
 func NewSubscription(name string) *Subscription {
-	return &Subscription{
+	subscription := &Subscription{
 		name:        name,
 		clients:     make(map[*Client]bool),
 		broadcast:   make(chan []byte),
 		subscribe:   make(chan *Client),
 		unsubscribe: make(chan *Client)}
+
+	go subscription.Run()
+	return subscription
 }
 
 // Run func
@@ -50,8 +54,22 @@ func (s *Subscription) Run() {
 					fmt.Printf("Subscription '%s' broadcast failed to client '%s'\n", s.name, client.id)
 				}
 			}
+		case <- s.close:
+			for client := range s.clients {
+				client.Unsubscribe(s)
+			}
+			close(s.broadcast)
+			close(s.close)
+			close(s.subscribe)
+			close(s.unsubscribe)
+			return
 		}
 	}
+}
+
+// Close the subscription
+func (s *Subscription) Close() {
+	s.close <- true
 }
 
 // Broadcast func

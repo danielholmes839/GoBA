@@ -2,7 +2,7 @@ package gameplay
 
 import (
 	"fmt"
-	"server/gameplay/geometry"
+	"server/game/gameplay/geometry"
 )
 
 // Tick func

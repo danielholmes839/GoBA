@@ -11,23 +11,28 @@ import (
 // Client struct
 type Client struct {
 	id            uuid.UUID
+	name          string
 	conn          *websocket.Conn
-	close         sync.WaitGroup
 	write         chan []byte
+	writing       *sync.Mutex
+	closed        *sync.WaitGroup
 	subscriptions map[*Subscription]bool
 }
 
 // NewClient func
-func NewClient(conn *websocket.Conn) *Client {
+func NewClient(conn *websocket.Conn, name string) *Client {
 	client := &Client{
 		id:            uuid.New(),
+		name:          name,
 		conn:          conn,
-		write:         make(chan []byte, 5),
+		write:         make(chan []byte),
+		writing:       &sync.Mutex{},
+		closed:        &sync.WaitGroup{},
 		subscriptions: make(map[*Subscription]bool),
 	}
 
 	// Add to the wait group
-	client.close.Add(1)
+	client.closed.Add(1)
 	fmt.Printf("client:%s has connected\n", client.id)
 	return client
 }
@@ -35,6 +40,18 @@ func NewClient(conn *websocket.Conn) *Client {
 // GetID func
 func (client *Client) GetID() uuid.UUID {
 	return client.id
+}
+
+// GetName func
+func (client *Client) GetName() string {
+	return client.name
+}
+
+// WriteMessages func - The messages will come from subscriptions for non subscription message use WriteMessage func
+func (client *Client) WriteMessages() {
+	for message := range client.write {
+		client.conn.WriteMessage(websocket.TextMessage, message)
+	}
 }
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
@@ -53,16 +70,11 @@ func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 	}
 }
 
-// WriteMessages - write messages that are sent by subscriptions or 'WriteMessage' method
-func (client *Client) WriteMessages() {
-	for message := range client.write {
-		client.conn.WriteMessage(websocket.TextMessage, message)
-	}
-}
-
 // WriteMessage - write a message to this client (ServerEvent category will always be "personal")
 func (client *Client) WriteMessage(eventName string, data []byte) {
-	client.write <- NewServerEvent("personal", eventName, data).Serialize()
+	client.writing.Lock()
+	client.conn.WriteMessage(websocket.TextMessage, NewServerEvent("personal", eventName, data).Serialize())
+	client.writing.Unlock()
 }
 
 // Subscribe func
@@ -79,20 +91,21 @@ func (client *Client) Unsubscribe(subscription *Subscription) {
 
 // Wait - blocks until the client closes
 func (client *Client) Wait() {
-	client.close.Wait()
+	client.closed.Wait()
 }
 
 // Close the client
 func (client *Client) Close() {
-	// Unsubscribe
+	client.writing.Lock()
+	defer client.writing.Unlock()
+
 	for subscription := range client.subscriptions {
 		client.Unsubscribe(subscription)
 	}
 
-	// Close channels, connections, wait group
 	close(client.write)
 	client.conn.Close()
-	client.close.Done()
+	client.closed.Done()
 
 	fmt.Printf("client:%s has disconnected\n", client.id)
 }

@@ -1,17 +1,40 @@
-html, body {
-  margin: 20px;
-  height: 100%;
-}
-
-* {
-    color:#ffff00e5;
-}
-
 h1 {
   font-family: 'Press Start 2P', cursive;
 }
 
-body {
-  background: #0f0a1e;
-  font-family: Helvetica, sans-serif;
+div .game {
+  min-height: 100vh; 
+  max-height: 100vh; 
+  margin: 3%;
+  overflow-y: hidden;
+}
+
+div .game-panel {
+  height: 80vh;
+}
+
+div .main-panel {
+  display: block;
+  width: 75%;
+  height: 100%;
+  float: left;
+}
+
+div .main-panel canvas {
+  width: 100%;
+  height: 100%;
+}
+
+div .side-panel {
+  display: block;
+  width: 25%;
+  height: 100%;
+  float: right;
+}
+
+div.card-shadow {
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow:  -5px 5px 10px #d9d9d9, 
+               5px -5px 10px #ffffff;
 }

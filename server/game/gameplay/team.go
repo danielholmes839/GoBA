@@ -1,7 +1,7 @@
 package gameplay
 
 import (
-	"server/gameplay/geometry"
+	"server/game/gameplay/geometry"
 	"server/ws"
 )
 
@@ -35,8 +35,8 @@ func (team *Team) tick(game *Game) {
 	visibleProjectiles := []*ProjectileJSON{}
 
 	// Ally players are visible
-	for _, champ := range team.players {
-		visibleChampions = append(visibleChampions, NewChampionJSON(champ))
+	for client, champ := range team.players {
+		visibleChampions = append(visibleChampions, NewChampionJSON(client, champ))
 	}
 
 	// Ally projectiles are visible
@@ -50,7 +50,7 @@ func (team *Team) tick(game *Game) {
 		}
 
 		// Adding visible champions on other teams
-		for _, otherChampion := range otherTeam.players {
+		for client, otherChampion := range otherTeam.players {
 			vision := false
 			p2 := otherChampion.hitbox.GetPosition()
 
@@ -66,7 +66,7 @@ func (team *Team) tick(game *Game) {
 			}
 
 			if vision {
-				visibleChampions = append(visibleChampions, NewChampionJSON(otherChampion))
+				visibleChampions = append(visibleChampions, NewChampionJSON(client, otherChampion))
 				continue
 			}
 
@@ -80,7 +80,7 @@ func (team *Team) tick(game *Game) {
 			}
 
 			if vision {
-				visibleChampions = append(visibleChampions, NewChampionJSON(otherChampion))
+				visibleChampions = append(visibleChampions, NewChampionJSON(client, otherChampion))
 				continue
 			}
 		}
