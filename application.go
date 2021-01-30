@@ -13,7 +13,7 @@ func main() {
 	}
 
 	mgr := game.NewGameManager()
-	mgr.CreateGame("TEST")
+	mgr.CreateGame("TEST", true)
 
 	// Game API
 	http.HandleFunc("/join", mgr.GameJoinAPI)

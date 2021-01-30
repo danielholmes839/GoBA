@@ -16,14 +16,14 @@ type ClientInfo struct {
 // Game struct
 type Game struct {
 	// Game settings
-	id          string
-	tps         int
-	playerCount int
+	tps       int
+	permanent bool
 
 	// Add, remove clients
-	connect    chan *ws.Client
-	disconnect chan *ws.Client
-	stop       chan bool
+	connect     chan *ws.Client
+	disconnect  chan *ws.Client
+	stop        chan bool
+	playerCount chan int
 
 	events *ws.ClientEventQueue // Events received are put in this queue
 	global *ws.Subscription     // Events relevant to all clients are sent on this subscription
@@ -37,17 +37,19 @@ type Game struct {
 }
 
 // NewGame func
-func NewGame(tps int) *Game {
+func NewGame(tps int, permanent bool) *Game {
 	g := &Game{
-		tps:        tps,
-		connect:    make(chan *ws.Client),
-		disconnect: make(chan *ws.Client),
-		stop:       make(chan bool),
-		events:     ws.NewClientEventQueue(),
-		global:     ws.NewSubscription("global-events"),
-		teams:      make(map[*Team]struct{}),
-		clients:    make(map[*ws.Client]*ClientInfo),
-		usernames:  make(map[string]bool),
+		tps:         tps,
+		permanent:   permanent,
+		connect:     make(chan *ws.Client),
+		disconnect:  make(chan *ws.Client),
+		stop:        make(chan bool),
+		playerCount: make(chan int),
+		events:      ws.NewClientEventQueue(),
+		global:      ws.NewSubscription("global-events"),
+		teams:       make(map[*Team]struct{}),
+		clients:     make(map[*ws.Client]*ClientInfo),
+		usernames:   make(map[string]bool),
 
 		// Structures
 		walls: []*Wall{
@@ -88,14 +90,17 @@ func (game *Game) Handle(event *ws.ClientEvent) {
 // Run func
 func (game *Game) Run() {
 	defer func() {
-		
+		game.global.Close()
+		for team := range game.teams {
+			team.events.Close()
+		}
 		for client := range game.clients {
 			game.disconnectClient(client)
 		}
 	}()
 
 	// switch between processing game ticks, events, connecting/disconnecting clients from the game
-	ticker := time.NewTicker(time.Duration(int(time.Second) / game.tps))
+	tick := time.NewTicker(time.Duration(int(time.Second) / game.tps))
 
 	for {
 		select {
@@ -109,11 +114,17 @@ func (game *Game) Run() {
 
 		case <-game.stop:
 			// Stop the game
-			return
+			if !game.permanent {
+				return
+			}
 
-		case <-ticker.C:
+		case <-tick.C:
 			// Game Loop
-			game.tick()
+			if len(game.usernames) > 0 {
+				game.tick()
+			}
+
+		case game.playerCount <- len(game.usernames):
 		}
 	}
 }
@@ -129,13 +140,16 @@ func (game *Game) Disconnect(client *ws.Client) {
 }
 
 // Stop the game
-func (game *Game) Stop() {
+func (game *Game) Stop() bool {
+	if game.permanent {
+		return false
+	}
 	game.stop <- true
+	return true
 }
 
 func (game *Game) connectClient(client *ws.Client) {
 	// Add client to the game
-	game.playerCount++
 	game.usernames[client.GetName()] = true
 	client.Subscribe(game.global)
 	client.WriteMessage("setup", NewSetupUpdate(game, client))
@@ -152,7 +166,6 @@ func (game *Game) connectClient(client *ws.Client) {
 
 func (game *Game) disconnectClient(client *ws.Client) {
 	// Remove client from the game
-	game.playerCount--
 	delete(game.usernames, client.GetName())
 	client.Unsubscribe(game.global)
 	game.getClientTeam(client).removeClient(client)
@@ -171,7 +184,7 @@ func (game *Game) UsernameTaken(name string) bool {
 
 // GetPlayerCount func
 func (game *Game) GetPlayerCount() int {
-	return game.playerCount
+	return <-game.playerCount
 }
 
 // Get the team with lowest number of players

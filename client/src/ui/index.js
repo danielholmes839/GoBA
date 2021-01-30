@@ -2,7 +2,7 @@ import Vue from 'vue';
 import axios from 'axios';
 import { setup } from "../game";
 
-const host = "localhost:5000";
+const host = "goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com";
 
 let app = new Vue({
     el: "#app",

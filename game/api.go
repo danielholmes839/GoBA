@@ -93,11 +93,11 @@ func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := mgr.CreateGameCode()
-	game, _ := mgr.CreateGame(code)
+	game, _ := mgr.CreateGame(code, false)
 
 	go func() {
-		// Stop the game after 5 minutes
-		time.Sleep(time.Minute * 5)
+		// Stop the game after 10 minutes
+		time.Sleep(time.Minute * 10)
 		game.Stop()
 		delete(mgr.games, code)
 	}()
@@ -166,4 +166,9 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 	game.Connect(client)    // connect client to the game
 	client.Wait()           // block until the websocket disconnects
 	game.Disconnect(client) // disconnect client from the game
+
+	if game.GetPlayerCount() == 0 && game.Stop() {
+		delete(mgr.games, code)
+	}
+
 }

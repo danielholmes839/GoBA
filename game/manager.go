@@ -26,12 +26,12 @@ func (mgr *Manager) GetGame(code string) *gameplay.Game {
 }
 
 // CreateGame - create a game with particular code
-func (mgr *Manager) CreateGame(code string) (*gameplay.Game, error) {
+func (mgr *Manager) CreateGame(code string, permanent bool) (*gameplay.Game, error) {
 	if !mgr.isCodeAvailable(code) {
 		return nil, errors.New("This code is taken")
 	}
 
-	game := gameplay.NewGame(64)
+	game := gameplay.NewGame(64, permanent)
 	go game.Run()
 	mgr.games[code] = game
 	return game, nil

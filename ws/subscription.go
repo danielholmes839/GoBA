@@ -19,6 +19,7 @@ func NewSubscription(name string) *Subscription {
 	subscription := &Subscription{
 		name:        name,
 		clients:     make(map[*Client]bool),
+		close:       make(chan bool),
 		broadcast:   make(chan []byte),
 		subscribe:   make(chan *Client),
 		unsubscribe: make(chan *Client)}
@@ -54,7 +55,7 @@ func (s *Subscription) Run() {
 					fmt.Printf("Subscription '%s' broadcast failed to client '%s'\n", s.name, client.id)
 				}
 			}
-		case <- s.close:
+		case <-s.close:
 			for client := range s.clients {
 				client.Unsubscribe(s)
 			}
