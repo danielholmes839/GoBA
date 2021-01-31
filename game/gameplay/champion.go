@@ -2,10 +2,10 @@ package gameplay
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"server/game/gameplay/geometry"
 	"server/ws"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,13 +13,14 @@ import (
 
 // Champion struct
 type Champion struct {
-	id        uuid.UUID
-	hitbox    *geometry.Circle
-	target    *geometry.Point // moving towards this position
-	maxHealth int
-	health    int
-	speed     int
-	stop      int
+	id           uuid.UUID
+	hitbox       *geometry.Circle
+	target       *geometry.Point // moving towards this position
+	maxHealth    int
+	health       int
+	stop         int
+	speed        int
+	movementLock *sync.Mutex
 
 	shootCooldown *Cooldown
 	dashCooldown  *Cooldown
@@ -28,26 +29,22 @@ type Champion struct {
 // NewChampion func
 func NewChampion(id uuid.UUID) *Champion {
 	return &Champion{
-		id:        id,
-		hitbox:    geometry.NewCircle(1500, 1500, 75),
-		maxHealth: 100,
-		health:    100,
-		speed:     700, // units per second
+		id:           id,
+		hitbox:       geometry.NewCircle(championStartX, championStartY, championRadius),
+		maxHealth:    championMaxHealth,
+		health:       championMaxHealth,
+		speed:        championSpeed, // units per second
+		movementLock: &sync.Mutex{},
 
-		shootCooldown: NewCooldown(time.Second / 10),
-		dashCooldown:  NewCooldown(time.Second * 2),
+		shootCooldown: NewCooldown(shootCooldown),
+		dashCooldown:  NewCooldown(dashCooldown),
 	}
 }
 
-// SetMovementDirection func
-func (champ *Champion) setMovementDirection(event *ws.ClientEvent) {
-	movement := &ChampionMoveEvent{}
-	if err := json.Unmarshal(event.GetData(), movement); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	champ.target = geometry.NewPoint(movement.X, movement.Y)
+func (champ *Champion) respawn(point *geometry.Point) {
+	x, y := point.GetX(), point.GetY()
+	champ.health = champ.maxHealth
+	champ.hitbox.GetPosition().Move(x, y)
 }
 
 func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
@@ -59,7 +56,6 @@ func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
 
 	data := &ChampionShootEvent{}
 	if err := json.Unmarshal(event.GetData(), data); err != nil {
-		fmt.Println(err)
 		return
 	}
 
@@ -72,21 +68,28 @@ func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
 }
 
 func (champ *Champion) dash() {
+	champ.movementLock.Lock()
+	defer champ.movementLock.Unlock()
+
 	if !champ.dashCooldown.isReady() {
 		return
 	}
 
 	go champ.dashCooldown.start()
-	champ.speed *= 3
+	champ.speed *= dashSpeedMultiplier
 
 	go func() {
-		time.Sleep(time.Second / 5)
-		champ.speed /= 3
+		time.Sleep(dashDuration)
+		champ.movementLock.Lock()
+		defer champ.movementLock.Unlock()
+		champ.speed /= dashSpeedMultiplier
 	}()
 }
 
-// Move func
 func (champ *Champion) move(game *Game) {
+	champ.movementLock.Lock()
+	defer champ.movementLock.Unlock()
+
 	if champ.target == nil {
 		return
 	}
@@ -96,46 +99,70 @@ func (champ *Champion) move(game *Game) {
 	dx := champ.target.GetX() - position.GetX()
 	dy := champ.target.GetY() - position.GetY()
 
-	distance := math.Sqrt(float64(dx*dx + dy*dy))
-	speed := float64(champ.speed) / float64(game.tps)
-
-	if distance < speed {
-		champ.hitbox.GetPosition().Move(champ.target.GetX(), champ.target.GetY())
-		champ.target = nil
+	if dx == 0 && dy == 0 {
 		return
 	}
 
-	speedI := int(math.RoundToEven(speed))                          // speed per tick
+	distance := math.Sqrt(float64(dx*dx + dy*dy))
+	speed := float64(champ.speed) / float64(game.tps)
 	speedX := int(math.RoundToEven(float64(dx) / distance * speed)) // speed per tick
 	speedY := int(math.RoundToEven(float64(dy) / distance * speed)) // speed per tick
 
-	champ.hitbox.GetPosition().Shift(speedX, speedY)
 	dirX := direction(speedX)
 	dirY := direction(speedY)
 
 	// Collision with walls
+	position.Shift(speedX, 0)
 	for _, wall := range game.walls {
 		if !wall.hitbox.HitsCircle(champ.hitbox) {
 			continue
 		}
 
-		// Reverse only horizontal translation
-		champ.hitbox.GetPosition().Shift(-speedX, 0)
+		position.Shift(-speedX, 0)
+		for i := 0; i < (speedX * dirX); i++ {
+			position.Shift(dirX, 0)
+			if wall.hitbox.HitsCircle(champ.hitbox) {
+				position.Shift(-dirX, 0)
+				break
+			}
+		}
+		break
+	}
+
+	position.Shift(0, speedY)
+	for _, wall := range game.walls {
 		if !wall.hitbox.HitsCircle(champ.hitbox) {
-			champ.hitbox.GetPosition().Shift(0, -speedY)
-			champ.hitbox.GetPosition().Shift(0, speedI*dirY)
 			continue
 		}
 
-		// Reverse only vertical translation
-		champ.hitbox.GetPosition().Shift(speedX, -speedY)
-		if !wall.hitbox.HitsCircle(champ.hitbox) {
-			champ.hitbox.GetPosition().Shift(-speedX, 0)
-			champ.hitbox.GetPosition().Shift(speedI*dirX, 0)
-			continue
+		position.Shift(0, -speedY)
+		for i := 0; i < (speedY * dirY); i++ {
+			position.Shift(0, dirY)
+			if wall.hitbox.HitsCircle(champ.hitbox) {
+				position.Shift(0, -dirY)
+				break
+			}
 		}
+		break
+	}
 
-		champ.hitbox.GetPosition().Shift(-speedX, 0)
+	if distance < speed {
 		champ.target = nil
 	}
+}
+
+func (champ *Champion) setMovementDirection(event *ws.ClientEvent) {
+	champ.movementLock.Lock()
+	defer champ.movementLock.Unlock()
+
+	movement := &ChampionMoveEvent{}
+	if err := json.Unmarshal(event.GetData(), movement); err != nil {
+		return
+	}
+
+	champ.target = geometry.NewPoint(movement.X, movement.Y)
+}
+
+func (champ *Champion) setMovementSpeed() {
+
 }

@@ -24,7 +24,7 @@ func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, t
 	dx := (target.GetX() - origin.GetX())
 	dy := (target.GetY() - origin.GetY())
 
-	speedPerSecond := 1500
+	speedPerSecond := projectileSpeed
 	speedPerTick := float64(speedPerSecond) / float64(game.tps)
 	distance := math.Sqrt(float64((dx * dx) + (dy * dy)))
 
@@ -34,10 +34,10 @@ func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, t
 	return &Projectile{
 		speedX:          speedX,
 		speedY:          speedY,
-		damage:          10,
-		maxRangeSquared: 2000 * 2000,
+		damage:          projectileDamage,
+		maxRangeSquared: projectileSpeed * projectileSpeed,
 		origin:          geometry.NewPoint(x, y),
-		hitbox:          geometry.NewCircle(x, y, 25),
+		hitbox:          geometry.NewCircle(x, y, projectileRadius),
 		team:            team,
 	}
 }
@@ -61,9 +61,7 @@ func (projectile *Projectile) collisions(game *Game) {
 
 			if champ.health <= 0 {
 				team := game.getClientTeam(client)
-				x, y := team.respawn.GetX(), team.respawn.GetY()
-				champ.health = champ.maxHealth
-				champ.hitbox.GetPosition().Move(x, y)
+				champ.respawn(team.respawn)
 			}
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"server/game/gameplay/geometry"
 	"server/ws"
+	"sync"
 	"time"
 )
 
@@ -16,11 +17,12 @@ type ClientInfo struct {
 // Game struct
 type Game struct {
 	// Game settings
-	tps       int
-	permanent bool
-	stopped   bool
+	tps int
 
-	// Add, remove clients
+	running     bool       // true when the game is running
+	runningLock sync.Mutex // Locked while stopping the game
+
+	// Channels
 	connect     chan *ws.Client
 	disconnect  chan *ws.Client
 	stop        chan bool
@@ -38,11 +40,10 @@ type Game struct {
 }
 
 // NewGame func
-func NewGame(tps int, permanent bool) *Game {
+func NewGame(tps int) *Game {
 	g := &Game{
 		tps:         tps,
-		permanent:   permanent,
-		stopped:     false,
+		running:     true,
 		connect:     make(chan *ws.Client),
 		disconnect:  make(chan *ws.Client),
 		stop:        make(chan bool),
@@ -77,6 +78,8 @@ func NewGame(tps int, permanent bool) *Game {
 	g.teams[NewTeam("Red Team", "#ff0000", geometry.NewPoint(1500, 200))] = struct{}{}
 	g.teams[NewTeam("Blue Team", "#0000ff", geometry.NewPoint(1500, 2800))] = struct{}{}
 
+	go g.run()
+
 	return g
 }
 
@@ -90,8 +93,15 @@ func (game *Game) Handle(event *ws.ClientEvent) {
 }
 
 // Run func
-func (game *Game) Run() {
+func (game *Game) run() {
+	// switch between processing game ticks, events, connecting/disconnecting clients from the game
+	tick := time.NewTicker(time.Duration(int(time.Second) / game.tps))
+
 	defer func() {
+		close(game.connect)
+		close(game.disconnect)
+		close(game.playerCount)
+
 		for client := range game.clients {
 			game.disconnectClient(client)
 		}
@@ -101,10 +111,9 @@ func (game *Game) Run() {
 		}
 
 		game.global.Close()
+		game.stop <- true
+		close(game.stop)
 	}()
-
-	// switch between processing game ticks, events, connecting/disconnecting clients from the game
-	tick := time.NewTicker(time.Duration(int(time.Second) / game.tps))
 
 	for {
 		select {
@@ -118,9 +127,8 @@ func (game *Game) Run() {
 
 		case <-game.stop:
 			// Stop the game
-			if !game.permanent {
-				return
-			}
+			game.running = false
+			return
 
 		case <-tick.C:
 			// Game Loop
@@ -135,27 +143,31 @@ func (game *Game) Run() {
 
 // Connect clients to the game
 func (game *Game) Connect(client *ws.Client) {
-	game.connect <- client
+	if game.running {
+		game.connect <- client
+	}
 }
 
 // Disconnect clients from the game
 func (game *Game) Disconnect(client *ws.Client) {
-	game.disconnect <- client
+	if game.running {
+		game.disconnect <- client
+	}
 }
 
-// Stop the game
+// Stop the game - returns false if the game was already stopped
 func (game *Game) Stop() bool {
-	if game.stopped {
+	game.runningLock.Lock()
+	defer game.runningLock.Unlock()
+
+	if game.running {
+		game.running = false
+		game.stop <- true
+		<-game.stop
 		return true
 	}
 
-	if game.permanent {
-		return false
-	}
-
-	game.stopped = true
-	game.stop <- true
-	return true
+	return false
 }
 
 func (game *Game) connectClient(client *ws.Client) {

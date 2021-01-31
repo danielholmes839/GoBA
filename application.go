@@ -6,27 +6,32 @@ import (
 	"server/game"
 )
 
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = ":5000"
+func config(key string, defaultValue string) string {
+	value := os.Getenv("PORT")
+	if value == "" {
+		return defaultValue
 	}
+	return value
+}
 
-	mgr := game.NewGameManager()
-	mgr.CreateGame("TEST", true)
-
-	// Game API
-	http.HandleFunc("/join", mgr.GameJoinAPI)
-	http.HandleFunc("/create", mgr.GameCreateAPI)
-	http.HandleFunc("/info", mgr.InfoAPI)
-
-	// Files
+func fileserver() {
 	fs := http.FileServer(http.Dir("./client"))
 	http.Handle("/client/", http.StripPrefix("/client/", fs))
 	http.HandleFunc("/game", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./client/index.html")
 	})
+}
+
+func main() {
+	port := config("PORT", "5000")
+	room := config("ROOM", "TEST")
+
+	mgr := game.NewGameManager()
+	mgr.SetupEndpoints()
+	mgr.CreateGameManually(room, nil)
+	
+	fileserver()
 
 	// Listen
-	http.ListenAndServe(port, nil)
+	http.ListenAndServe(":"+port, nil)
 }

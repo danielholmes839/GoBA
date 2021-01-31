@@ -8,7 +8,6 @@ import (
 	"server/game/gameplay"
 	"server/ws"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -65,12 +64,12 @@ func validateName(name string, game *gameplay.Game) error {
 func (mgr *Manager) InfoAPI(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	players := 0
-	for _, game := range mgr.games {
-		players += game.GetPlayerCount()
+	for _, managed := range mgr.managedGames {
+		players += managed.game.GetPlayerCount()
 	}
 
 	bytes, _ := json.Marshal(&infoJSON{
-		LiveGames:   len(mgr.games),
+		LiveGames:   len(mgr.managedGames),
 		LivePlayers: players,
 	})
 
@@ -92,15 +91,7 @@ func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := mgr.CreateGameCode()
-	game, _ := mgr.CreateGame(code, false)
-
-	go func() {
-		// Stop the game after 15 minutes
-		time.Sleep(time.Minute * 15)
-		game.Stop()
-		delete(mgr.games, code)
-	}()
+	code, _ := mgr.CreateGameDefault()
 
 	w.Write(marshall(&createJSON{
 		Code:    code,
@@ -130,7 +121,12 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 	code := strings.ToUpper(r.URL.Query().Get("code"))
 	name := r.URL.Query().Get("name")
 
-	game := mgr.GetGame(code)
+	managedGame := mgr.get(code)
+	var game *gameplay.Game
+	if managedGame != nil {
+		game = managedGame.game
+	}
+
 	client := ws.NewClient(conn, name)
 
 	// Validate the username
@@ -166,9 +162,12 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 	game.Connect(client)    // connect client to the game
 	client.Wait()           // block until the websocket disconnects
 	game.Disconnect(client) // disconnect client from the game
+	managedGame.onDisconnect(mgr, game, code)
+}
 
-	if game.GetPlayerCount() == 0 && game.Stop() {
-		delete(mgr.games, code)
-	}
-
+// SetupEndpoints for the API
+func (mgr *Manager) SetupEndpoints() {
+	http.HandleFunc("/join", mgr.GameJoinAPI)
+	http.HandleFunc("/create", mgr.GameCreateAPI)
+	http.HandleFunc("/info", mgr.InfoAPI)
 }

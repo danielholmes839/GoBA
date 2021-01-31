@@ -6,6 +6,10 @@ export const setup = (socket: WebSocket, app: any) => {
     let ticks = new TickCounter(app);
 
     // Setup Events
+    socket.onclose = () => {
+        location.reload();
+    }
+
     socket.onmessage = (message: MessageEvent<string>) => {
         let event: ServerEvent<any> = JSON.parse(message.data);
         let canvas: HTMLCanvasElement = <HTMLCanvasElement>document.getElementById("canvas");

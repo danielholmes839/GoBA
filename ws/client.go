@@ -13,22 +13,24 @@ type Client struct {
 	id            uuid.UUID
 	name          string
 	conn          *websocket.Conn
-	write         chan []byte
-	writing       *sync.Mutex
 	closed        bool
 	closedWg      *sync.WaitGroup
+	lock          *sync.Mutex
+	write         chan []byte
 	subscriptions map[*Subscription]bool
 }
 
 // NewClient func
 func NewClient(conn *websocket.Conn, name string) *Client {
 	client := &Client{
-		id:            uuid.New(),
-		name:          name,
-		conn:          conn,
-		write:         make(chan []byte),
-		writing:       &sync.Mutex{},
+		id:   uuid.New(),
+		name: name,
+		conn: conn,
+
+		closed:        false,
 		closedWg:      &sync.WaitGroup{},
+		lock:          &sync.Mutex{},
+		write:         make(chan []byte),
 		subscriptions: make(map[*Subscription]bool),
 	}
 
@@ -62,7 +64,7 @@ func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			client.Close()
-			break
+			return
 		}
 
 		// Create an event
@@ -73,9 +75,12 @@ func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 
 // WriteMessage - write a message to this client (ServerEvent category will always be "personal")
 func (client *Client) WriteMessage(eventName string, data []byte) {
-	client.writing.Lock()
+	client.lock.Lock()
+	defer client.lock.Unlock()
+
+	// Write the message
 	client.conn.WriteMessage(websocket.TextMessage, NewServerEvent("personal", eventName, data).Serialize())
-	client.writing.Unlock()
+
 }
 
 // Subscribe func
@@ -97,13 +102,13 @@ func (client *Client) Wait() {
 
 // Close the client
 func (client *Client) Close() {
+	client.lock.Lock()
+	defer client.lock.Unlock()
+
 	if client.closed {
 		return
 	}
 	client.closed = true
-	
-	client.writing.Lock()
-	defer client.writing.Unlock()
 
 	for subscription := range client.subscriptions {
 		client.Unsubscribe(subscription)
