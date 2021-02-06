@@ -5,7 +5,7 @@ h1 {
 div .game {
   min-height: 100vh; 
   max-height: 100vh; 
-  margin: 3%;
+  padding: 3%;
   overflow-y: hidden;
 }
 

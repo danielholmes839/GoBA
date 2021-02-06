@@ -1,5 +1,6 @@
-import { events, ServerEvent, TickCounter } from './events';
+import { events, ServerEvent } from './events';
 import { Game } from './gameplay';
+import { TickCounter } from './tick_counter';
 
 export const setup = (socket: WebSocket, app: any) => {
     let game: Game;
@@ -29,7 +30,7 @@ export const setup = (socket: WebSocket, app: any) => {
             case "update-teams":
                 let update: events.TeamUpdate = event.data;
                 game.updateTeams(update);
-                app.updateTeams(update.teams);
+                app.updateScores(update.scores);
                 break;
 
             default:
