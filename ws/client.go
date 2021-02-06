@@ -15,7 +15,7 @@ type Client struct {
 	conn          *websocket.Conn
 	closed        bool
 	closedWg      *sync.WaitGroup
-	lock          *sync.Mutex
+	writing       *sync.Mutex
 	write         chan []byte
 	subscriptions map[*Subscription]bool
 }
@@ -29,7 +29,7 @@ func NewClient(conn *websocket.Conn, name string) *Client {
 
 		closed:        false,
 		closedWg:      &sync.WaitGroup{},
-		lock:          &sync.Mutex{},
+		writing:       &sync.Mutex{},
 		write:         make(chan []byte),
 		subscriptions: make(map[*Subscription]bool),
 	}
@@ -51,11 +51,11 @@ func (client *Client) GetName() string {
 }
 
 // WriteMessages func - The messages will come from subscriptions for non subscription message use WriteMessage func
-func (client *Client) WriteMessages() {
-	for message := range client.write {
-		client.conn.WriteMessage(websocket.TextMessage, message)
-	}
-}
+// func (client *Client) WriteMessages() {
+// 	for message := range client.write {
+// 		client.conn.WriteMessage(websocket.TextMessage, message)
+// 	}
+// }
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
 func (client *Client) ReceiveMessages(handler ClientEventHandler) {
@@ -73,14 +73,22 @@ func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 	}
 }
 
+// Write bytes to client
+func (client *Client) Write(data []byte) {
+	client.writing.Lock()
+	defer client.writing.Unlock()
+
+	// Write the message
+	client.conn.WriteMessage(websocket.TextMessage, data)
+}
+
 // WriteMessage - write a message to this client (ServerEvent category will always be "personal")
 func (client *Client) WriteMessage(eventName string, data []byte) {
-	client.lock.Lock()
-	defer client.lock.Unlock()
+	client.writing.Lock()
+	defer client.writing.Unlock()
 
 	// Write the message
 	client.conn.WriteMessage(websocket.TextMessage, NewServerEvent("personal", eventName, data).Serialize())
-
 }
 
 // Subscribe func
@@ -102,8 +110,8 @@ func (client *Client) Wait() {
 
 // Close the client
 func (client *Client) Close() {
-	client.lock.Lock()
-	defer client.lock.Unlock()
+	client.writing.Lock()				// Don't close while writing
+	defer client.writing.Unlock()
 
 	if client.closed {
 		return

@@ -12,6 +12,7 @@ import (
 type ClientInfo struct {
 	team     *Team
 	champion *Champion
+	score    *Score
 }
 
 // Game struct
@@ -32,11 +33,12 @@ type Game struct {
 	global *ws.Subscription     // Events relevant to all clients are sent on this subscription
 
 	// Game variables
-	walls     []*Wall
-	bushes    []*Bush
-	teams     map[*Team]struct{}
-	clients   map[*ws.Client]*ClientInfo
-	usernames map[string]bool
+	walls       []*Wall
+	bushes      []*Bush
+	teams       map[*Team]struct{}
+	clients     map[*ws.Client]*ClientInfo
+	projectiles map[*Projectile]*ws.Client
+	usernames   map[string]bool
 }
 
 // NewGame func
@@ -52,6 +54,7 @@ func NewGame(tps int) *Game {
 		global:      ws.NewSubscription("global-events"),
 		teams:       make(map[*Team]struct{}),
 		clients:     make(map[*ws.Client]*ClientInfo),
+		projectiles: make(map[*Projectile]*ws.Client),
 		usernames:   make(map[string]bool),
 
 		// Structures
@@ -132,9 +135,7 @@ func (game *Game) run() {
 
 		case <-tick.C:
 			// Game Loop
-			if len(game.usernames) > 0 {
-				game.tick()
-			}
+			game.tick()
 
 		case game.playerCount <- len(game.usernames):
 		}
@@ -180,7 +181,7 @@ func (game *Game) connectClient(client *ws.Client) {
 	team := game.getNextTeam()
 	team.addClient(client, champion)
 
-	game.setClientInfo(client, champion, team)
+	game.createClientInfo(client, champion, team)
 
 	// Send clients the updated teams
 	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
@@ -232,22 +233,18 @@ func (game *Game) getClientTeam(client *ws.Client) *Team {
 	return game.clients[client].team
 }
 
+func (game *Game) getClientScore(client *ws.Client) *Score {
+	// Get the info (team and champion) of the client
+	return game.clients[client].score
+}
+
 func (game *Game) getClientInfo(client *ws.Client) *ClientInfo {
 	// Get the info (team and champion) of the client
 	return game.clients[client]
 }
 
-func (game *Game) setClientChampion(client *ws.Client, champion *Champion) {
-	// Set the champion of the client
-	game.clients[client].champion = champion
-}
-
-func (game *Game) setClientTeam(client *ws.Client, team *Team) {
-	// Set the team of the client
-	game.clients[client].team = team
-}
-
-func (game *Game) setClientInfo(client *ws.Client, champion *Champion, team *Team) {
+func (game *Game) createClientInfo(client *ws.Client, champion *Champion, team *Team) {
 	// Set the info (team and champion) of the client
-	game.clients[client] = &ClientInfo{champion: champion, team: team}
+	score := NewScore(0, 0, 0)
+	game.clients[client] = &ClientInfo{champion: champion, team: team, score: score}
 }

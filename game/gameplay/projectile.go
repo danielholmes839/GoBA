@@ -1,24 +1,24 @@
 package gameplay
 
 import (
-	"server/game/gameplay/geometry"
 	"math"
+	"server/game/gameplay/geometry"
+	"server/ws"
 )
 
 // Projectile struct
 type Projectile struct {
-	hit             bool
-	damage          int
-	speedX          int
-	speedY          int
-	maxRangeSquared int
-	team            *Team
-	origin          *geometry.Point
-	hitbox          *geometry.Circle
+	hit    bool
+	speedX int
+	speedY int
+	origin *geometry.Point
+	hitbox *geometry.Circle
+	team   *Team
+	client *ws.Client
 }
 
 // NewProjectile function
-func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, team *Team) *Projectile {
+func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, client *ws.Client) *Projectile {
 	x, y := origin.GetX(), origin.GetY()
 
 	dx := (target.GetX() - origin.GetX())
@@ -32,13 +32,12 @@ func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, t
 	speedY := int(math.RoundToEven((float64(dy) / distance) * speedPerTick)) // speed per tick
 
 	return &Projectile{
-		speedX:          speedX,
-		speedY:          speedY,
-		damage:          projectileDamage,
-		maxRangeSquared: projectileSpeed * projectileSpeed,
-		origin:          geometry.NewPoint(x, y),
-		hitbox:          geometry.NewCircle(x, y, projectileRadius),
-		team:            team,
+		speedX: speedX,
+		speedY: speedY,
+		origin: geometry.NewPoint(x, y),
+		hitbox: geometry.NewCircle(x, y, projectileRadius),
+		team:   game.getClientTeam(client),
+		client: client,
 	}
 }
 
@@ -47,7 +46,7 @@ func (projectile *Projectile) move() {
 }
 
 func (projectile *Projectile) collisions(game *Game) {
-	for client, info := range game.clients {
+	for _, info := range game.clients {
 		champ := info.champion
 		team := info.team
 
@@ -57,16 +56,11 @@ func (projectile *Projectile) collisions(game *Game) {
 
 		if projectile.hitbox.HitsCircle(champ.hitbox) {
 			projectile.hit = true
-			champ.health -= projectile.damage
-
-			if champ.health <= 0 {
-				team := game.getClientTeam(client)
-				champ.respawn(team.respawn)
-			}
+			champ.damage(projectileDamage, projectile.client)
 		}
 	}
 }
 
 func (projectile *Projectile) done() bool {
-	return projectile.hit || (projectile.hitbox.GetPosition().Distance2(projectile.origin) > projectile.maxRangeSquared)
+	return projectile.hit || (projectile.hitbox.GetPosition().Distance2(projectile.origin) > (projectileRange * projectileRange))
 }

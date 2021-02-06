@@ -50,7 +50,7 @@ func (mgr *Manager) CreateGameDefault() (string, *gameplay.Game) {
 
 	code := mgr.createUniqueGameCode()
 	game := gameplay.NewGame(64)
-	mgr.set(code, &ManagedGame{game, EmptyDisconnectHook})
+	mgr.set(code, &ManagedGame{game, DefaultDisconnectHook})
 
 	// Stop the game after 15 minutes
 	go func() {

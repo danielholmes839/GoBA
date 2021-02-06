@@ -156,7 +156,7 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 	}))
 
 	// Get the name and game code the from the request
-	go client.WriteMessages()
+	// go client.WriteMessages()
 	go client.ReceiveMessages(game)
 
 	game.Connect(client)    // connect client to the game

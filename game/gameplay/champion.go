@@ -13,17 +13,21 @@ import (
 
 // Champion struct
 type Champion struct {
-	id           uuid.UUID
-	hitbox       *geometry.Circle
-	target       *geometry.Point // moving towards this position
-	maxHealth    int
-	health       int
-	stop         int
-	speed        int
-	movementLock *sync.Mutex
+	id        uuid.UUID
+	maxHealth int
+	health    int
+	stop      int
+	speed     int
 
+	hitbox *geometry.Circle
+	target *geometry.Point // moving towards this position
+
+	movementLock  *sync.Mutex
 	shootCooldown *Cooldown
 	dashCooldown  *Cooldown
+
+	lastHit  *ws.Client               // The last client to hit this champion
+	lastHits map[*ws.Client]time.Time // The times hit by any other clients
 }
 
 // NewChampion func
@@ -38,13 +42,35 @@ func NewChampion(id uuid.UUID) *Champion {
 
 		shootCooldown: NewCooldown(shootCooldown),
 		dashCooldown:  NewCooldown(dashCooldown),
+
+		lastHit:  nil,
+		lastHits: make(map[*ws.Client]time.Time),
 	}
+}
+
+func (champ *Champion) damage(damage int, enemy *ws.Client) {
+	champ.health -= damage
+	champ.lastHit = enemy
+	champ.lastHits[enemy] = time.Now()
 }
 
 func (champ *Champion) respawn(point *geometry.Point) {
 	x, y := point.GetX(), point.GetY()
 	champ.health = champ.maxHealth
 	champ.hitbox.GetPosition().Move(x, y)
+}
+
+func (champ *Champion) deathInfo() (*ws.Client, []*ws.Client) {
+	now := time.Now()
+	assists := make([]*ws.Client, 0)
+
+	for client, timeHit := range champ.lastHits {
+		if client != champ.lastHit && now.Before(timeHit.Add(time.Second*10)) {
+			assists = append(assists, client)
+		}
+	}
+
+	return champ.lastHit, assists
 }
 
 func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
@@ -63,7 +89,7 @@ func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
 	origin := champ.hitbox.GetPosition().Copy()
 	target := geometry.NewPoint(data.X, data.Y)
 
-	projectile := NewProjectile(origin, target, game, team)
+	projectile := NewProjectile(origin, target, game, event.Client)
 	team.projectiles[projectile] = struct{}{}
 }
 

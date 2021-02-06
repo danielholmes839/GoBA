@@ -9,7 +9,7 @@ import (
 type Cooldown struct {
 	ready    bool
 	duration time.Duration
-	lock     sync.Mutex
+	lock     *sync.Mutex
 }
 
 // NewCooldown func
@@ -17,7 +17,7 @@ func NewCooldown(duration time.Duration) *Cooldown {
 	return &Cooldown{
 		ready:    true,
 		duration: duration,
-		lock:     sync.Mutex{},
+		lock:     &sync.Mutex{},
 	}
 }
 

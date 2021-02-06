@@ -24,12 +24,12 @@ func NewSubscription(name string) *Subscription {
 		subscribe:   make(chan *Client),
 		unsubscribe: make(chan *Client)}
 
-	go subscription.Run()
+	go subscription.run()
 	return subscription
 }
 
 // Run func
-func (s *Subscription) Run() {
+func (s *Subscription) run() {
 	fmt.Printf("'%s' subscription opened\n", s.name)
 	defer fmt.Printf("'%s' subscription closed\n", s.name)
 
@@ -48,13 +48,9 @@ func (s *Subscription) Run() {
 		// message all clients
 		case message := <-s.broadcast:
 			for client := range s.clients {
-				select {
-				// Send message to client
-				case client.write <- message:
-				default:
-					fmt.Printf("Subscription '%s' broadcast failed to client '%s'\n", s.name, client.id)
-				}
+				client.Write(message)
 			}
+
 		case <-s.close:
 			for client := range s.clients {
 				client.Unsubscribe(s)

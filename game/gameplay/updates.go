@@ -25,8 +25,8 @@ func NewSetupUpdate(game *Game, client *ws.Client) []byte {
 	}
 
 	data, _ := json.Marshal(&SetupUpdate{
-		ID:    client.GetID().String(),
-		Walls: walls,
+		ID:     client.GetID().String(),
+		Walls:  walls,
 		Bushes: bushes,
 	})
 
@@ -37,16 +37,18 @@ func NewSetupUpdate(game *Game, client *ws.Client) []byte {
 type TeamsUpdate struct {
 	Teams   map[string]*TeamJSON `json:"teams"`   // team-name: { color, size }
 	Clients map[string]string    `json:"clients"` // id: team-name
+	Scores  map[string]*Score    `json:"scores"`  // name: score
 }
 
-/* 
-NewTeamsUpdate func 
+/*
+NewTeamsUpdate func
 Sent when the teams change
 */
 func NewTeamsUpdate(game *Game) []byte {
 	r := &TeamsUpdate{
 		Teams:   make(map[string]*TeamJSON),
 		Clients: make(map[string]string),
+		Scores:  make(map[string]*Score),
 	}
 
 	for team := range game.teams {
@@ -57,20 +59,24 @@ func NewTeamsUpdate(game *Game) []byte {
 		}
 	}
 
+	for client, info := range game.clients {
+		r.Scores[client.GetName()] = info.score
+	}
+
 	data, _ := json.Marshal(r)
 	return data
 }
 
 // TickUpdate struct
 type TickUpdate struct {
-	Champions []*ChampionJSON `json:"champions"`
+	Champions   []*ChampionJSON   `json:"champions"`
 	Projectiles []*ProjectileJSON `json:"projectiles"`
 }
 
 // NewTickUpdate func
 func NewTickUpdate(champions []*ChampionJSON, projectiles []*ProjectileJSON) []byte {
 	r := &TickUpdate{
-		Champions: champions,
+		Champions:   champions,
 		Projectiles: projectiles,
 	}
 

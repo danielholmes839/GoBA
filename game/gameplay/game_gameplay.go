@@ -10,7 +10,7 @@ func (game *Game) tick() {
 	// Empty the event queue
 	for event := range game.events.Read() {
 		champ := game.getClientChampion(event.Client)
-		
+
 		switch event.Name {
 		case "move":
 			champ.setMovementDirection(event)
@@ -18,7 +18,7 @@ func (game *Game) tick() {
 			champ.shoot(event, game)
 		case "dash":
 			champ.dash()
-			
+
 		default:
 			fmt.Printf("unknown game event name: '%s'\n", event.Name)
 		}
@@ -27,18 +27,44 @@ func (game *Game) tick() {
 	for _, client := range game.clients {
 		client.champion.move(game)
 	}
-	
+
+	/* Projectile movement, collision, deletion */
 	for team := range game.teams {
 		for projectile := range team.projectiles {
 			projectile.move()
 			projectile.collisions(game)
 			if projectile.done() {
 				delete(team.projectiles, projectile)
-			}	
+			}
 		}
 	}
 
-	// Team tick
+	deaths := 0
+	for client, info := range game.clients {
+		champion := info.champion
+		if champion.health > 0 {
+			continue
+		}
+
+		game.getClientScore(client).addDeath()
+		champion.respawn(info.team.respawn)
+
+		killer, assists := champion.deathInfo()
+		game.getClientScore(killer).addKill()
+		for _, assist := range assists {
+			game.getClientScore(assist).addAssist()
+		}
+		deaths++
+
+	}
+
+	if deaths > 0 {
+		game.global.Broadcast("update-teams", NewTeamsUpdate(game))
+	}
+
+	/* Team "ticks"
+	- Calculate vision of projectiles, and other players
+	*/
 	for team := range game.teams {
 		team.tick(game)
 	}
