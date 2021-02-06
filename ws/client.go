@@ -50,13 +50,6 @@ func (client *Client) GetName() string {
 	return client.name
 }
 
-// WriteMessages func - The messages will come from subscriptions for non subscription message use WriteMessage func
-// func (client *Client) WriteMessages() {
-// 	for message := range client.write {
-// 		client.conn.WriteMessage(websocket.TextMessage, message)
-// 	}
-// }
-
 // ReceiveMessages - read incoming messages, break when the connection is closed
 func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 	for {
