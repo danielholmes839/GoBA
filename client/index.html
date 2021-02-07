@@ -23,8 +23,8 @@
                 <div class=" side-panel bg-light">
                     <div class="card m-2">
                         <div class="card-body">
-                            <h3 class="card-title">Game</h3>
-                            <p class="card-text">Join code: <span class="fw-bold">{{ code }}</span>
+                            <h3 class="card-title"></h3>
+                            <p class="card-text">Code: <span class="fw-bold">{{ code }}</span>
                             </p>
 
                             <h3 class="card-title">Scoreboard</h3>
@@ -45,7 +45,7 @@
                                 </tbody>
                             </table>
 
-
+                            <button class="btn btn-sm btn-outline-danger" @click="refresh">Disconnect</button>
                         </div>
                     </div>
                 </div>
@@ -119,28 +119,14 @@
                             <li>Y: Unlock the camera (freeze the camera inplace)</li>
                         </ul>
 
-                        <h4>The Goal</h4>
-                        <hr />
-                        <p>Why build this? I built GoBA to replicate aspects of League of Legends /
-                            MOBA games
-                            including:
-                            vision, abilities, scoreboards, and teams. Additionally I wanted to get
-                            more experience
-                            working
-                            with Go and effectively use Go's concurrency features to build a real
-                            application.
-                        </p>
-
                         <h4>Technical</h4>
                         <hr />
-                        <p>GoBA was creating using a Go server, Websockets, and a client that uses
-                            Vue/Typescript.
-                            GoBA
-                            is
-                            deployed using AWS Elastic Beanstalk. For more details and the source
-                            code see the
-                            GitHub
-                            repository.
+                        <p>The server is written in Go and communicates with clients using websockets. The server runs
+                            at 64 ticks per second (TPS). TPS is the number of times per second clients receive updates
+                            from the server. The client was built using Typescript and Vue.
+                            GoBA is deployed using AWS Elastic Beanstalk. For more details and the full source code see
+                            the
+                            GitHub repository.
                         </p>
                         <div class="mb-4">
                             <a href="https://github.com/danielholmes839/GoBA"

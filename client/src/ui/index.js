@@ -2,14 +2,13 @@ import Vue from 'vue';
 import axios from 'axios';
 import { setup } from "../game";
 
-const host = "goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com"; // "localhost:5000"; 
+const host = "localhost:5000"; // "goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com";
 console.log(host);
 
 let app = new Vue({
     el: "#app",
     data: {
         title: "GoBA - Go Online Battle Arena",
-        tps: "TPS: 0",
         inGame: false,
 
         scores: [],
@@ -95,6 +94,10 @@ let app = new Vue({
                     socket.close();
                 }
             }
+        },
+
+        refresh: function () {
+            location.reload();
         }
     }
 });

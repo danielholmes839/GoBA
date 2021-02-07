@@ -1,10 +1,8 @@
 import { events, ServerEvent } from './events';
 import { Game } from './gameplay';
-import { TickCounter } from './tick_counter';
 
 export const setup = (socket: WebSocket, app: any) => {
     let game: Game;
-    let ticks = new TickCounter(app);
 
     // Setup Events
     socket.onclose = () => {
@@ -24,7 +22,6 @@ export const setup = (socket: WebSocket, app: any) => {
             case "tick":
                 let tick: events.Tick = event.data;
                 game.tick(tick);
-                ticks.update(event);
                 break;
 
             case "update-teams":
