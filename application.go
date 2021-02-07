@@ -6,17 +6,21 @@ import (
 	"server/game"
 )
 
+// Get config variables
 func config(key string, defaultValue string) string {
-	value := os.Getenv("PORT")
+	value := os.Getenv(key)
 	if value == "" {
 		return defaultValue
 	}
 	return value
 }
 
-func fileserver() {
+func serveFiles() {
+	// Serve files in ./client
 	fs := http.FileServer(http.Dir("./client"))
 	http.Handle("/client/", http.StripPrefix("/client/", fs))
+
+	// Serve the index.html at /game
 	http.HandleFunc("/game", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./client/index.html")
 	})
@@ -29,8 +33,8 @@ func main() {
 	mgr := game.NewGameManager()
 	mgr.SetupEndpoints()
 	mgr.CreateGameManually(room, nil)
-	
-	fileserver()
+
+	serveFiles()
 
 	// Listen
 	http.ListenAndServe(":"+port, nil)
