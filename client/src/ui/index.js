@@ -33,12 +33,14 @@ let app = new Vue({
 
         updateScores: function (scores) {
             let formatted = [];
-            scores = scores.sort((a, b) => a.kills > b.kills);
 
             for (let [name, score] of Object.entries(scores)) {
                 score.name = name;
                 formatted.push(score);
             }
+            formatted = formatted.sort((a, b) => {
+                return (a.kills < b.kills) ? 1 : -1;
+            });
             this.scores = formatted;
         },
 
