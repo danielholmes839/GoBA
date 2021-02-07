@@ -2,7 +2,7 @@ import Vue from 'vue';
 import axios from 'axios';
 import { setup } from "../game";
 
-const host = "localhost:5000"; // "goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com";
+const host = "goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com"; // "localhost:5000";
 console.log(host);
 
 let app = new Vue({
@@ -32,8 +32,9 @@ let app = new Vue({
         },
 
         updateScores: function (scores) {
-            console.log(scores);
             let formatted = [];
+            scores = scores.sort((a, b) => a.kills > b.kills);
+
             for (let [name, score] of Object.entries(scores)) {
                 score.name = name;
                 formatted.push(score);
