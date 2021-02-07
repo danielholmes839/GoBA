@@ -1,6 +1,7 @@
 package gameplay
 
 import (
+	"server/game/gameplay/geometry"
 	"server/ws"
 
 	"github.com/google/uuid"
@@ -12,38 +13,21 @@ type TeamJSON struct {
 	Size  int    `json:"size"`
 }
 
-// WallJSON struct
-type WallJSON struct {
+// RectangleJSON struct
+type RectangleJSON struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 	W int `json:"w"`
 	H int `json:"h"`
 }
 
-// NewWallJSON func
-func NewWallJSON(wall *Wall) *WallJSON {
-	return &WallJSON{
-		X: wall.hitbox.GetPosition().GetX(),
-		Y: wall.hitbox.GetPosition().GetY(),
-		W: wall.hitbox.GetWidth(),
-		H: wall.hitbox.GetHeight()}
-}
-
-// BushJSON struct
-type BushJSON struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-	W int `json:"w"`
-	H int `json:"h"`
-}
-
-// NewBushJSON func
-func NewBushJSON(bush *Bush) *BushJSON {
-	return &BushJSON{
-		X: bush.hitbox.GetPosition().GetX(),
-		Y: bush.hitbox.GetPosition().GetY(),
-		W: bush.hitbox.GetWidth(),
-		H: bush.hitbox.GetHeight(),
+// NewRectangleJSON func
+func NewRectangleJSON(rect *geometry.Rectangle) *RectangleJSON {
+	return &RectangleJSON{
+		X: rect.GetPosition().GetX(),
+		Y: rect.GetPosition().GetY(),
+		W: rect.GetWidth(),
+		H: rect.GetHeight(),
 	}
 }
 

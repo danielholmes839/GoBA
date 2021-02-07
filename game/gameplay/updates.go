@@ -7,21 +7,21 @@ import (
 
 // SetupUpdate struct - initial update sent to clients
 type SetupUpdate struct {
-	ID     string      `json:"id"`
-	Walls  []*WallJSON `json:"walls"`
-	Bushes []*BushJSON `json:"bushes"`
+	ID     string           `json:"id"`
+	Walls  []*RectangleJSON `json:"walls"`
+	Bushes []*RectangleJSON `json:"bushes"`
 }
 
 // NewSetupUpdate struct
 func NewSetupUpdate(game *Game, client *ws.Client) []byte {
-	walls := make([]*WallJSON, len(game.walls))
+	walls := make([]*RectangleJSON, len(game.walls))
 	for i, wall := range game.walls {
-		walls[i] = NewWallJSON(wall)
+		walls[i] = NewRectangleJSON(wall)
 	}
 
-	bushes := make([]*BushJSON, len(game.bushes))
+	bushes := make([]*RectangleJSON, len(game.bushes))
 	for i, bush := range game.bushes {
-		bushes[i] = NewBushJSON(bush)
+		bushes[i] = NewRectangleJSON(bush)
 	}
 
 	data, _ := json.Marshal(&SetupUpdate{

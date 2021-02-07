@@ -49,7 +49,7 @@ func (game *Game) tick() {
 		game.getClientScore(client).addDeath()
 		champion.respawn(info.team.respawn)
 
-		killer, assists := champion.deathInfo()
+		killer, assists := champion.death()
 		game.getClientScore(killer).addKill()
 		for _, assist := range assists {
 			game.getClientScore(assist).addAssist()
@@ -72,14 +72,14 @@ func (game *Game) tick() {
 
 func (game *Game) hasLineOfSight(line *geometry.Line) bool {
 	for _, wall := range game.walls {
-		if line.HitsRectangle(wall.hitbox) {
+		if line.HitsRectangle(wall) {
 			return false
 		}
 	}
 
 	for _, bush := range game.bushes {
-		sourceInBush := line.GetStart().HitsRectangle(bush.hitbox)
-		targetInBush := line.GetEnd().HitsRectangle(bush.hitbox)
+		sourceInBush := line.GetStart().HitsRectangle(bush)
+		targetInBush := line.GetEnd().HitsRectangle(bush)
 
 		if targetInBush && sourceInBush {
 			// Both in the same bush then the bush has no effect
@@ -91,7 +91,7 @@ func (game *Game) hasLineOfSight(line *geometry.Line) bool {
 			return false
 		}
 
-		if !targetInBush && !sourceInBush && line.HitsRectangle(bush.hitbox) {
+		if !targetInBush && !sourceInBush && line.HitsRectangle(bush) {
 			// The bush is acting as a wall
 			return false
 		}

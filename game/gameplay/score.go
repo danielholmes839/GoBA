@@ -13,14 +13,17 @@ func NewScore(kills int, deaths int, assists int) *Score {
 
 }
 
+// add a kill to the players score
 func (score *Score) addKill() {
 	score.Kills++
 }
 
+// add a death to the players score
 func (score *Score) addDeath() {
 	score.Deaths++
 }
 
+// add an assist to the player score
 func (score *Score) addAssist() {
 	score.Assists++
 }

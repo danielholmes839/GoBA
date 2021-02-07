@@ -14,6 +14,6 @@ const dashSpeedMultiplier = 3
 const shootCooldown = time.Second / 10
 
 const projectileDamage = 10
-const projectileSpeed = 1500
+const projectileSpeed = 1600
 const projectileRange = 2000
 const projectileRadius = 25

@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// ManagedGame struct
+type ManagedGame struct {
+	game         *gameplay.Game
+	onDisconnect DisconnectHook
+}
+
 // Manager struct
 type Manager struct {
 	managedGames map[string]*ManagedGame
@@ -29,11 +35,13 @@ func (mgr *Manager) StopGame(code string) error {
 	mgr.editing.Lock()
 	defer mgr.editing.Unlock()
 
+	// The game does not exist
 	managedGame := mgr.get(code)
 	if managedGame == nil {
 		return errors.New("This game cannot be found")
 	}
 
+	// The game is stopped
 	success := managedGame.game.Stop()
 	if !success {
 		return errors.New("This game is not running")
@@ -66,14 +74,17 @@ func (mgr *Manager) CreateGameManually(code string, onDisconnect DisconnectHook)
 	mgr.editing.Lock()
 	defer mgr.editing.Unlock()
 
+	// Don't do anything on disconnect by default
 	if onDisconnect == nil {
 		onDisconnect = EmptyDisconnectHook
 	}
 
+	// Check if the code is available
 	if !mgr.taken(code) {
 		return errors.New("This code is already taken")
 	}
 
+	// Create the game
 	game := gameplay.NewGame(64)
 	mgr.set(code, &ManagedGame{game, onDisconnect})
 
@@ -96,7 +107,6 @@ func (mgr *Manager) createUniqueGameCode() string {
 	for !mgr.taken(code) {
 		code = mgr.createGameCode()
 	}
-
 	return code
 }
 

@@ -18,8 +18,7 @@ type ClientInfo struct {
 // Game struct
 type Game struct {
 	// Game settings
-	tps int
-
+	tps         int        // "Ticks per second" the number of
 	running     bool       // true when the game is running
 	runningLock sync.Mutex // Locked while stopping the game
 
@@ -33,12 +32,14 @@ type Game struct {
 	global *ws.Subscription     // Events relevant to all clients are sent on this subscription
 
 	// Game variables
-	walls       []*Wall
-	bushes      []*Bush
-	teams       map[*Team]struct{}
-	clients     map[*ws.Client]*ClientInfo
-	projectiles map[*Projectile]*ws.Client
 	usernames   map[string]bool
+	clients     map[*ws.Client]*ClientInfo
+	teams       map[*Team]struct{}
+	projectiles map[*Projectile]*ws.Client
+
+	// Structures
+	walls  []*geometry.Rectangle
+	bushes []*geometry.Rectangle
 }
 
 // NewGame func
@@ -58,23 +59,23 @@ func NewGame(tps int) *Game {
 		usernames:   make(map[string]bool),
 
 		// Structures
-		walls: []*Wall{
-			NewWall(-2000, -2000, 7000, 2000),
-			NewWall(-2000, -2000, 2000, 7000),
-			NewWall(-2000, 3000, 7000, 2000),
-			NewWall(3000, -2000, 2000, 7000),
+		walls: []*geometry.Rectangle{
+			geometry.NewRectangle(-2000, -2000, 7000, 2000),
+			geometry.NewRectangle(-2000, -2000, 2000, 7000),
+			geometry.NewRectangle(-2000, 3000, 7000, 2000),
+			geometry.NewRectangle(3000, -2000, 2000, 7000),
 
-			NewWall(400, 400, 950, 100),
-			NewWall(1650, 400, 950, 100),
+			geometry.NewRectangle(400, 400, 950, 100),
+			geometry.NewRectangle(1650, 400, 950, 100),
 
-			NewWall(400, 2500, 950, 100),
-			NewWall(1650, 2500, 950, 100),
+			geometry.NewRectangle(400, 2500, 950, 100),
+			geometry.NewRectangle(1650, 2500, 950, 100),
 		},
 
-		bushes: []*Bush{
-			NewBush(500, 500, 500, 300), NewBush(1250, 500, 500, 300), NewBush(2000, 500, 500, 300),
-			NewBush(500, 2200, 500, 300), NewBush(1250, 2200, 500, 300), NewBush(2000, 2200, 500, 300),
-			NewBush(0, 1000, 300, 1000), NewBush(2700, 1000, 300, 1000),
+		bushes: []*geometry.Rectangle{
+			geometry.NewRectangle(500, 500, 500, 300), geometry.NewRectangle(1250, 500, 500, 300), geometry.NewRectangle(2000, 500, 500, 300),
+			geometry.NewRectangle(500, 2200, 500, 300), geometry.NewRectangle(1250, 2200, 500, 300), geometry.NewRectangle(2000, 2200, 500, 300),
+			geometry.NewRectangle(0, 1000, 300, 1000), geometry.NewRectangle(2700, 1000, 300, 1000),
 		},
 	}
 
@@ -197,8 +198,6 @@ func (game *Game) disconnectClient(client *ws.Client) {
 	// Send clients the updated teams
 	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
 }
-
-// ############### HELPERS ##############
 
 // UsernameTaken func
 func (game *Game) UsernameTaken(name string) bool {
