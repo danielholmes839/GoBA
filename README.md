@@ -1,21 +1,23 @@
-# GoBA
+# GoBA - Go Battle Arena
 
-Multiplayer online battle arena (MOBA) game written in Go (GoBA). The goal of this project is to recreate some of the mechanics seen in games like League of Legends and Dota.
-The client was written using Typescript, and client to server communication is done using Websockets.
+[Try GoBA!](http://goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com/game)
 
-## Vision
+GoBA is a simple multiplayer online battle arena (MOBA) game. The server is written in Go, and the client was built using Typescript and Vue. The game is deployed on AWS using Elastic Beanstalk. The focus of this project is not on gameplay. Instead, it is to see how concurrency features of Go, and websockets can be used to achieve real-time client server communication. The server is capable of running multiple games at 64 ticks per seconds (TPS) on a single AWS t3nano EC2 instance. I believe this is a success. This [article](https://technology.riotgames.com/news/valorants-128-tick-servers) by the creators of VALORANT a popular online first person shooter explains how they were able to achieve 128 TPS and run 3 games on a single CPU core. This is extremely impressive as each frame must be processed in under 2.6 milliseconds.
 
-In games like League of Legends and Dota their is a vision system to determine what each team can see. The team can see an enemy if at least one of their members has a line of sight to that enemy. Additionally there are bushes that players can step inside of and only be seen if another player enters the bush. This functionality is implemented in GoBA
+## Features
 
-## Screenshots
+- Abilities
+- Teams
+- Vision
+- Scoreboard
+- Among Us style codes for creating and joining games
 
-- players are shown as circles of their team color
-- health bars are shown in yellow for your character, green for allies, red for enemies
-- bushes are green
-- walls are gray
+## Next Steps
 
-![1](client/screenshots/1.PNG)
+Other interesting features would include:
 
-![2](client/screenshots/2.PNG)
-
-![3](client/screenshots/3.PNG)
+- Match making system
+- More abilties / characters to play.
+- Visualize vision on client with "fog of war". There's an interesting article on how this is done in League of Legends [here](https://technology.riotgames.com/news/story-fog-and-war)
+- Implement a path finding algorithm for the player to navigate the map automatically. This [article](https://www.researchgate.net/publication/315456384_Applying_Theta_in_Modern_Game) explains a modified version of A\* search algorithm called Theta\* that looks very promising
+- Implement various mechanisms to account for latency
