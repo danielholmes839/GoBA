@@ -50,9 +50,17 @@ func (game *Game) tick() {
 		champion.respawn(info.team.respawn)
 
 		killer, assists := champion.death()
-		game.getClientScore(killer).addKill()
+
+		// Add the kills
+		if clientInfo := game.getClientInfo(killer); clientInfo != nil {
+			clientInfo.score.addKill()
+		}
+
+		// Add assists
 		for _, assist := range assists {
-			game.getClientScore(assist).addAssist()
+			if clientInfo := game.getClientInfo(assist); clientInfo != nil {
+				clientInfo.score.addAssist()
+			}
 		}
 		deaths++
 
