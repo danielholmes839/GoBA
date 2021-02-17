@@ -1,8 +1,10 @@
 # GoBA - Go Battle Arena
 
-[Try GoBA!](http://goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com/game)
+[Play GoBA!](http://goba-env.eba-hiw6diij.ca-central-1.elasticbeanstalk.com/game)
 
 GoBA is a simple multiplayer online battle arena (MOBA) game. The server is written in Go, and the client was built using Typescript and Vue. The game is deployed on AWS using Elastic Beanstalk.
+
+![gameplay](./client/screenshots/gameplay.PNG)
 
 ## Performance
 
