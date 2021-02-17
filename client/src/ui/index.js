@@ -8,7 +8,6 @@ console.log(host);
 let app = new Vue({
     el: "#app",
     data: {
-        title: "GoBA - Go Online Battle Arena",
         inGame: false,
 
         scores: [],
