@@ -8,7 +8,7 @@ import (
 // Tick func
 func (game *Game) tick() {
 	// Empty the event queue
-	for event := range game.events.Read() {
+	for _, event := range game.events.Read() {
 		champ := game.getClientChampion(event.Client)
 
 		switch event.Name {
@@ -29,6 +29,23 @@ func (game *Game) tick() {
 	}
 
 	/* Projectile movement, collision, deletion */
+	game.processProjectiles()
+
+	/* Check deaths and update the scoreboard */
+	if deaths := game.processDeaths(); deaths > 0 {
+		game.global.Broadcast("update-teams", NewTeamsUpdate(game))
+	}
+
+	/* Team "ticks"
+	- Calculate vision of projectiles, and other players
+	*/
+	for team := range game.teams {
+		team.tick(game)
+	}
+}
+
+func (game *Game) processProjectiles() {
+	// Process projectile movement and  collisions
 	for team := range game.teams {
 		for projectile := range team.projectiles {
 			projectile.move()
@@ -38,7 +55,10 @@ func (game *Game) tick() {
 			}
 		}
 	}
+}
 
+func (game *Game) processDeaths() int {
+	// Process any deaths
 	deaths := 0
 	for client, info := range game.clients {
 		champion := info.champion
@@ -63,19 +83,9 @@ func (game *Game) tick() {
 			}
 		}
 		deaths++
-
 	}
 
-	if deaths > 0 {
-		game.global.Broadcast("update-teams", NewTeamsUpdate(game))
-	}
-
-	/* Team "ticks"
-	- Calculate vision of projectiles, and other players
-	*/
-	for team := range game.teams {
-		team.tick(game)
-	}
+	return deaths
 }
 
 func (game *Game) hasLineOfSight(line *geometry.Line) bool {

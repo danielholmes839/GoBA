@@ -12,26 +12,25 @@ type ClientEventQueue struct {
 }
 
 // Events returns a channel that will be used to empty the queue. While reading no more events can be added
-func (e *ClientEventQueue) Read() <-chan *ClientEvent {
+func (e *ClientEventQueue) Read() []*ClientEvent {
 	e.lock.Lock()
-	c := make(chan *ClientEvent)
-	go func() {
-		for e.queue.Len() > 0 {
-			event := e.queue.Front()
-			e.queue.Remove(event)
-			c <- event.Value.(*ClientEvent)
-		}
-		e.lock.Unlock()
-		close(c)
-	}()
-	return c
+	defer e.lock.Unlock()
+
+	events := make([]*ClientEvent, e.queue.Len())
+	for i := 0; e.queue.Len() > 0; i++ {
+		event := e.queue.Front()
+		events[i] = e.queue.Remove(event).(*ClientEvent)
+	}
+
+	return events
 }
 
 // Push an event to the queue.
 func (e *ClientEventQueue) Push(event *ClientEvent) {
 	e.lock.Lock()
+	defer e.lock.Unlock()
 	e.queue.PushBack(event)
-	e.lock.Unlock()
+	
 }
 
 // NewClientEventQueue func

@@ -74,11 +74,9 @@ func (champ *Champion) death() (*ws.Client, []*ws.Client) {
 }
 
 func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
-	if !champ.shootCooldown.isReady() {
+	if err := champ.shootCooldown.use(); err != nil {
 		return
 	}
-
-	go champ.shootCooldown.start()
 
 	data := &ChampionShootEvent{}
 	if err := json.Unmarshal(event.GetData(), data); err != nil {
@@ -94,14 +92,10 @@ func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
 }
 
 func (champ *Champion) dash() {
-	champ.movementLock.Lock()
-	defer champ.movementLock.Unlock()
-
-	if !champ.dashCooldown.isReady() {
+	if err := champ.dashCooldown.use(); err != nil {
 		return
 	}
 
-	go champ.dashCooldown.start()
 	champ.speed *= dashSpeedMultiplier
 
 	go func() {

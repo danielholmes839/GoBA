@@ -1,40 +1,38 @@
 package gameplay
 
 import (
-	"sync"
+	"errors"
 	"time"
 )
 
 // Cooldown struct
 type Cooldown struct {
-	ready    bool
+	start    time.Time
 	duration time.Duration
-	lock     *sync.Mutex
 }
 
 // NewCooldown func
 func NewCooldown(duration time.Duration) *Cooldown {
 	return &Cooldown{
-		ready:    true,
+		start:    time.Time{},
 		duration: duration,
-		lock:     &sync.Mutex{},
 	}
 }
 
-func (cd *Cooldown) start() {
-	cd.setReady(false)
-	time.Sleep(cd.duration)
-	cd.setReady(true)
-}
+func (cd *Cooldown) use() error {
+	if !cd.isReady() {
+		return errors.New("Bruv we on cooldown")
+	}
 
-func (cd *Cooldown) setReady(value bool) {
-	cd.lock.Lock()
-	defer cd.lock.Unlock()
-	cd.ready = value
+	cd.start = time.Now()
+	return nil 
 }
 
 func (cd *Cooldown) isReady() bool {
-	cd.lock.Lock()
-	defer cd.lock.Unlock()
-	return cd.ready
+	t := time.Time{}
+	if cd.start == t {
+		return true
+	}
+
+	return time.Now().Sub(cd.start) > cd.duration
 }
