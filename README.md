@@ -8,7 +8,7 @@ GoBA is a simple multiplayer online battle arena (MOBA) game. The server is writ
 
 The focus of this project is not on gameplay. Instead, it is to see how concurrency features of Go, and websockets can be used to achieve real-time client server communication. GoBA's server is capable of running multiple games at 64 ticks per seconds (TPS) on a single AWS t3nano EC2 instance. This is a great [article](https://technology.riotgames.com/news/valorants-128-tick-servers) by the creators of VALORANT a popular online first person shooter that explains how they were able to achieve 128 TPS and run 3 games on a single CPU core. This is extremely impressive as each frame must be processed in under 2.6 milliseconds.
 
-To analyze the performance of GoBA I used [pprof](https://github.com/google/pprof) a profiling tool for Go built by Google. From a 30 second CPU profile with 1.59 seconds total samples it generated the diagram below. In box 1 we see the go routine that runs a game. In this go routine there's a select statement that chooses between executing a tick, connecting / disconnecting players, and stopping the game. In box 2 we see the execution of a game tick. In box 3 we see the calculation of collisions between circles and rectangles for hit boxes. In box 4 we see the time spent executing a tick for each specific team. This will calculate which enemies members of this team can / can't see and send this information client. This leads to box 5 where we see this data get encoded to JSON.
+To analyze the performance of GoBA I used [pprof](https://github.com/google/pprof) a profiling tool for Go built by Google. From a 30 second CPU profile with 1.59 seconds total samples it generated the diagram below. In box 1 we see the go routine that runs a game. In this go routine there's an infinite loop with a select statement that chooses between executing a tick, connecting / disconnecting players, and stopping the game. In box 2 we see the execution of a game tick. In box 3 we see the function for the calculation of collisions between circles and rectangles. In box 4 we see the time spent executing a tick for each specific team. This will calculate which enemies the members of each team can / can't see. This leads to box 5 where we see this data get encoded to JSON and sent to the client.
 
 ![pprof](./client/screenshots/profile1-diagram.png)
 
@@ -20,9 +20,9 @@ The objective of GoBA is to get as many kills as possible until the game automat
 
 There were some interesting features I considered adding however, they ended up being outside the current scope of the project:
 
-- Match making system
-- Create a more structured game with more characters to play, towers, monst
+- Create a more structured game like League of Legends with more characters to play, towers, and monsters
 - Visualize vision on the client with "fog of war". There's an interesting article on how this is done in League of Legends [here](https://technology.riotgames.com/news/story-fog-and-war)
-- Implement a path finding algorithm for players to navigate the map automatically. This [article](https://www.researchgate.net/publication/315456384_Applying_Theta_in_Modern_Game) explains a modified version of A\* search algorithm called Theta\* that looks very promising
+- Implement a path finding algorithm for players to navigate the map automatically. This [article](https://www.researchgate.net/publication/315456384_Applying_Theta_in_Modern_Game) explains a modified version of A\* search algorithm called Theta\* that looks very promising.
 - Implement various mechanisms to account for latency
 - Implement [quad trees](https://en.wikipedia.org/wiki/Quadtree) to improve the efficiency of collision detection
+- Match making system
