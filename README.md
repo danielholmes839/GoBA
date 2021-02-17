@@ -10,7 +10,7 @@ The focus of this project is not on gameplay. Instead, it is to see how concurre
 
 To analyze the performance of GoBA I used [pprof](https://github.com/google/pprof) a profiling tool for Go built by Google. From a 30 second CPU profile with 1.59 seconds total samples it generated the diagram below. In box 1 we see the go routine that runs a game. In this go routine there's a select statement that chooses between executing a tick, connecting / disconnecting players, and stopping the game. In box 2 we see the execution of a game tick. In box 3 we see the calculation of collisions between circles and rectangles for hit boxes. In box 4 we see the time spent executing a tick for each specific team. This will calculate which enemies members of this team can / can't see and send this information client. This leads to box 5 where we see this data get encoded to JSON.
 
-![pprof](./client/screenshots/profile-diagram.png)
+![pprof](./client/screenshots/profile1-diagram.png)
 
 ## Gameplay
 
