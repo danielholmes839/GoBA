@@ -2,19 +2,14 @@ package geometry
 
 // Rectangle struct
 type Rectangle struct {
-	p *Point
+	Point
 	w int
 	h int
 }
 
 // NewRectangle func
-func NewRectangle(x int, y int, w int, h int) *Rectangle {
-	return &Rectangle{p: &Point{x: x, y: y}, w: w, h: h}
-}
-
-// GetPosition func
-func (rect *Rectangle) GetPosition() *Point {
-	return rect.p
+func NewRectangle(x, y, w, h int) *Rectangle {
+	return &Rectangle{Point{x, y}, w, h}
 }
 
 // GetWidth func
@@ -43,10 +38,10 @@ func (rect *Rectangle) HitsLine(l *Line) bool {
 func (rect *Rectangle) HitsRectangle(r *Rectangle) bool {
 	r1 := rect
 	r2 := r
-	return (r1.p.x+r1.w >= r2.p.x &&
-		r1.p.x <= r2.p.x+r2.w &&
-		r1.p.y+r1.h >= r2.p.y &&
-		r1.p.y <= r2.p.y+r2.h)
+	return (r1.x+r1.w >= r2.x &&
+		r1.x <= r2.x+r2.w &&
+		r1.y+r1.h >= r2.y &&
+		r1.y <= r2.y+r2.h)
 }
 
 // HitsCircle func

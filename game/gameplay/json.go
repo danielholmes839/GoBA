@@ -24,8 +24,8 @@ type RectangleJSON struct {
 // NewRectangleJSON func
 func NewRectangleJSON(rect *geometry.Rectangle) *RectangleJSON {
 	return &RectangleJSON{
-		X: rect.GetPosition().GetX(),
-		Y: rect.GetPosition().GetY(),
+		X: rect.GetX(),
+		Y: rect.GetY(),
 		W: rect.GetWidth(),
 		H: rect.GetHeight(),
 	}
@@ -48,8 +48,8 @@ func NewChampionJSON(client *ws.Client, champ *Champion) *ChampionJSON {
 		Name:   client.GetName(),
 		Health: champ.health,
 		Radius: champ.hitbox.GetRadius(),
-		X:      champ.hitbox.GetPosition().GetX(),
-		Y:      champ.hitbox.GetPosition().GetY(),
+		X:      champ.hitbox.GetX(),
+		Y:      champ.hitbox.GetY(),
 	}
 }
 
@@ -66,8 +66,8 @@ func NewProjectileJSON(projectile *Projectile) *ProjectileJSON {
 	return &ProjectileJSON{
 		Team:   projectile.team.name,
 		Radius: projectile.hitbox.GetRadius(),
-		X:      projectile.hitbox.GetPosition().GetX(),
-		Y:      projectile.hitbox.GetPosition().GetY(),
+		X:      projectile.hitbox.GetX(),
+		Y:      projectile.hitbox.GetY(),
 	}
 }
 

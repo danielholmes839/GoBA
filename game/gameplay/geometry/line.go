@@ -50,14 +50,14 @@ func (line *Line) HitsPoint(p *Point) bool {
 }
 
 // HitsLine func
-func (line *Line) HitsLine(l *Line) bool {
-	p1 := line.p1
-	p2 := line.p2
-	p3 := l.p1
-	p4 := l.p2
+func (l *Line) HitsLine(other *Line) bool {
+	p1 := l.p1
+	p2 := l.p2
+	p3 := other.p1
+	p4 := other.p2
 
-	uA := division(((p4.x-p3.x)*(p1.y-p3.y))-((p4.y-p3.y)*(p1.x-p3.x)), ((p4.y-p3.y)*(p2.x-p1.x))-((p4.x-p3.x)*(p2.y-p1.y)))
-	uB := division(((p4.x-p3.x)*(p1.y-p3.y))-((p4.y-p3.y)*(p1.x-p3.x)), ((p4.y-p3.y)*(p2.x-p1.x))-((p4.x-p3.x)*(p2.y-p1.y)))
+	uA := div(((p4.x-p3.x)*(p1.y-p3.y))-((p4.y-p3.y)*(p1.x-p3.x)), ((p4.y-p3.y)*(p2.x-p1.x))-((p4.x-p3.x)*(p2.y-p1.y)))
+	uB := div(((p4.x-p3.x)*(p1.y-p3.y))-((p4.y-p3.y)*(p1.x-p3.x)), ((p4.y-p3.y)*(p2.x-p1.x))-((p4.x-p3.x)*(p2.y-p1.y)))
 
 	if uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1 {
 		x := int(math.Round(float64(p1.x) + (uA * float64(p2.x-p1.x))))
@@ -85,28 +85,26 @@ func (line *Line) HitsLine(l *Line) bool {
 }
 
 // HitsCircle func
-func (line *Line) HitsCircle(c *Circle) bool {
-	p1 := line.p1
-	p2 := line.p2
+func (l *Line) HitsCircle(c *Circle) bool {
+	p1 := l.p1
+	p2 := l.p2
 	r2 := c.r * c.r
 
 	// Check if the end points of the line hit the circle first
-	if distance2(c.p, p1) < r2 || distance2(c.p, p2) < r2 {
+	if distance2(c, p1) < r2 || distance2(c, p2) < r2 {
 		return true
 	}
 
 	// Closest point
-	d := dot(line, c.p)
+	d := dot(l, c)
 	point := &Point{x: p1.x + (d * (p2.x - p1.x)), y: p1.y + (d * (p2.y - p1.y))}
-	return distance2(c.p, point) < r2
+	return distance2(c, point) < r2
 }
 
 // HitsRectangle func
-func (line *Line) HitsRectangle(r *Rectangle) bool {
-	p := r.p
-
-	return (line.HitsLine(NewLine(p.x, p.y, p.x+r.w, p.y)) ||
-		line.HitsLine(NewLine(p.x, p.y, p.x, p.y+r.h)) ||
-		line.HitsLine(NewLine(p.x, p.y+r.h, p.x+r.w, p.y+r.h)) ||
-		line.HitsLine(NewLine(p.x+r.w, p.y+r.h, p.x+r.w, p.y)))
+func (l *Line) HitsRectangle(r *Rectangle) bool {
+	return (l.HitsLine(NewLine(r.x, r.y, r.x+r.w, r.y)) ||
+		l.HitsLine(NewLine(r.x, r.y, r.x, r.y+r.h)) ||
+		l.HitsLine(NewLine(r.x, r.y+r.h, r.x+r.w, r.y+r.h)) ||
+		l.HitsLine(NewLine(r.x+r.w, r.y+r.h, r.x+r.w, r.y)))
 }

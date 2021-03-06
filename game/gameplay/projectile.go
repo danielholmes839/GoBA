@@ -30,7 +30,7 @@ func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, c
 
 	speedX := int(math.RoundToEven((float64(dx) / distance) * speedPerTick)) // speed per tick
 	speedY := int(math.RoundToEven((float64(dy) / distance) * speedPerTick)) // speed per tick
-	
+
 	return &Projectile{
 		speedX: speedX,
 		speedY: speedY,
@@ -42,7 +42,7 @@ func NewProjectile(origin *geometry.Point, target *geometry.Point, game *Game, c
 }
 
 func (projectile *Projectile) move() {
-	projectile.hitbox.GetPosition().Shift(projectile.speedX, projectile.speedY)
+	projectile.hitbox.Shift(projectile.speedX, projectile.speedY)
 }
 
 // Check for collisions with other players
@@ -65,5 +65,5 @@ func (projectile *Projectile) collisions(game *Game) {
 
 // The projectile should be deleted
 func (projectile *Projectile) done() bool {
-	return projectile.hit || (projectile.hitbox.GetPosition().Distance2(projectile.origin) > (projectileRange * projectileRange))
+	return projectile.hit || (projectile.hitbox.Distance2(projectile.origin) > (projectileRange * projectileRange))
 }

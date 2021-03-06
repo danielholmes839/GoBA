@@ -2,60 +2,54 @@ package geometry
 
 // Circle struct
 type Circle struct {
-	p  *Point // center
-	r  int    // radius
+	Point     // center
+	r     int // radius
 }
 
 // NewCircle func
 func NewCircle(x int, y int, r int) *Circle {
-	return &Circle{p: &Point{x, y}, r: r}
-}
-
-// GetPosition func
-func (circle *Circle) GetPosition() *Point {
-	return circle.p
+	return &Circle{Point{x, y}, r}
 }
 
 // GetRadius func
-func (circle *Circle) GetRadius() int {
-	return circle.r
+func (c *Circle) GetRadius() int {
+	return c.r
 }
 
 /* ############################ HITBOXES ######################################*/
 
-// OverlapsPoint func
-func (circle *Circle) HitsPoint(p *Point) bool {
-	return distance2(circle.p, p) < circle.r*circle.r
+// HitsPoint func
+func (c *Circle) HitsPoint(p *Point) bool {
+	return distance2(c, p) < c.r*c.r
 }
 
-// OverlapsLine func
-func (circle *Circle) OverlapsLine(l *Line) bool {
-	return l.HitsCircle(circle)
+// HitsLine func
+func (c *Circle) HitsLine(l *Line) bool {
+	return l.HitsCircle(c)
 }
 
 // HitsRectangle func
-func (circle *Circle) HitsRectangle(r *Rectangle) bool {
-	c := circle.p
-	x := circle.p.x
-	y := circle.p.y
-	
-	if (c.x < r.p.x) {
-		x = r.p.x
-	} else if (c.x > r.p.x + r.w) {
-		x = r.p.x + r.w
+func (c *Circle) HitsRectangle(r *Rectangle) bool {
+	x := c.x
+	y := c.y
+
+	if c.x < r.x {
+		x = r.x
+	} else if c.x > r.x+r.w {
+		x = r.x + r.w
 	}
 
-	if (c.y < r.p.y) {
-		y = r.p.y
-	} else if (c.y > r.p.y + r.h) {
-		y = r.p.y + r.h
+	if c.y < r.y {
+		y = r.y
+	} else if c.y > r.y+r.h {
+		y = r.y + r.h
 	}
 
-	return distance2(c, &Point{x, y}) < circle.r*circle.r
+	return distance2(c, &Point{x, y}) < c.r*c.r
 }
 
 // HitsCircle func
-func (circle *Circle) HitsCircle(c *Circle) bool {
-	r := circle.r + c.r
-	return distance2(circle.p, c.p) < r*r
+func (c *Circle) HitsCircle(other *Circle) bool {
+	r := c.r + other.r
+	return distance2(c, other) < r*r
 }

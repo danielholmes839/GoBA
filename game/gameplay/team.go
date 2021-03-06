@@ -52,11 +52,11 @@ func (team *Team) tick(game *Game) {
 		// Adding visible champions on other teams
 		for client, otherChampion := range otherTeam.players {
 			vision := false
-			p2 := otherChampion.hitbox.GetPosition()
+			p2 := otherChampion.hitbox
 
 			// Check players with vision
 			for _, teamChampion := range team.players {
-				p1 := teamChampion.hitbox.GetPosition()
+				p1 := teamChampion.hitbox
 				// Line of sight champion to enemy
 				line := geometry.NewLine(p1.GetX(), p1.GetY(), p2.GetX(), p2.GetY())
 				if game.hasLineOfSight(line) {
@@ -71,7 +71,7 @@ func (team *Team) tick(game *Game) {
 			}
 
 			for teamProjectile := range team.projectiles {
-				p1 := teamProjectile.hitbox.GetPosition()
+				p1 := teamProjectile.hitbox
 				// Line of sight champion to enemy
 				line := geometry.NewLine(p1.GetX(), p1.GetY(), p2.GetX(), p2.GetY())
 				if game.hasLineOfSight(line) {
@@ -87,9 +87,9 @@ func (team *Team) tick(game *Game) {
 
 		// Adding visible projectiles from other teams
 		for otherProjectile := range otherTeam.projectiles {
-			p2 := otherProjectile.hitbox.GetPosition()
+			p2 := otherProjectile.hitbox
 			for _, teamChampion := range team.players {
-				p1 := teamChampion.hitbox.GetPosition()
+				p1 := teamChampion.hitbox
 
 				// Line of sight champion to projectile
 				line := geometry.NewLine(p1.GetX(), p1.GetY(), p2.GetX(), p2.GetY())

@@ -59,9 +59,9 @@ func (point *Point) HitsCircle(c *Circle) bool {
 // HitsRectangle func
 func (point *Point) HitsRectangle(r *Rectangle) bool {
 	return (
-		point.x >= r.p.x &&
-		point.x <= r.p.x + r.w &&
-		point.y >= r.p.y &&
-		point.y <= r.p.y + r.h)
+		point.x >= r.x &&
+		point.x <= r.x + r.w &&
+		point.y >= r.y &&
+		point.y <= r.y + r.h)
 }
 

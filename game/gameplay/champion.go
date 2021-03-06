@@ -57,7 +57,7 @@ func (champ *Champion) damage(damage int, enemy *ws.Client) {
 func (champ *Champion) respawn(point *geometry.Point) {
 	x, y := point.GetX(), point.GetY()
 	champ.health = champ.maxHealth
-	champ.hitbox.GetPosition().Move(x, y)
+	champ.hitbox.Move(x, y)
 }
 
 func (champ *Champion) death() (*ws.Client, []*ws.Client) {
@@ -84,7 +84,7 @@ func (champ *Champion) shoot(event *ws.ClientEvent, game *Game) {
 	}
 
 	team := game.getClientTeam(event.Client)
-	origin := champ.hitbox.GetPosition().Copy()
+	origin := champ.hitbox.Copy()
 	target := geometry.NewPoint(data.X, data.Y)
 
 	projectile := NewProjectile(origin, target, game, event.Client)
@@ -116,9 +116,8 @@ func (champ *Champion) move(game *Game) {
 	}
 
 	// Calculate the difference between current and target position
-	position := champ.hitbox.GetPosition()
-	dx := champ.target.GetX() - position.GetX()
-	dy := champ.target.GetY() - position.GetY()
+	dx := champ.target.GetX() - champ.hitbox.GetX()
+	dy := champ.target.GetY() - champ.hitbox.GetY()
 
 	// The target is the current position
 	if dx == 0 && dy == 0 {
@@ -142,8 +141,8 @@ func (champ *Champion) move(game *Game) {
 
 func (champ *Champion) moveX(game *Game, speedX int) {
 	dirX := direction(speedX)
-	position := champ.hitbox.GetPosition()
-
+	position := champ.hitbox
+	
 	position.Shift(speedX, 0)
 	for _, wall := range game.walls {
 		if !wall.HitsCircle(champ.hitbox) {
@@ -164,8 +163,8 @@ func (champ *Champion) moveX(game *Game, speedX int) {
 
 func (champ *Champion) moveY(game *Game, speedY int) {
 	dirY := direction(speedY)
-	position := champ.hitbox.GetPosition()
 
+	position := champ.hitbox
 	position.Shift(0, speedY)
 	for _, wall := range game.walls {
 		if !wall.HitsCircle(champ.hitbox) {
