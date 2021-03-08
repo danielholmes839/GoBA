@@ -45,7 +45,7 @@ type ChampionJSON struct {
 func NewChampionJSON(client *ws.Client, champ *Champion) *ChampionJSON {
 	return &ChampionJSON{
 		ID:     champ.id,
-		Name:   client.GetName(),
+		Name:   client.GetUsername(),
 		Health: champ.health,
 		Radius: champ.hitbox.GetRadius(),
 		X:      champ.hitbox.GetX(),

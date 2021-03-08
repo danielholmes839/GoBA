@@ -60,7 +60,7 @@ func NewTeamsUpdate(game *Game) []byte {
 	}
 
 	for client, info := range game.clients {
-		r.Scores[client.GetName()] = info.score
+		r.Scores[client.GetUsername()] = info.score
 	}
 
 	data, _ := json.Marshal(r)

@@ -37,7 +37,7 @@ func marshall(data interface{}) []byte {
 	return bytes
 }
 
-func validateGame(code string, game *gameplay.Game) error {
+func validateGame(code string, game gameplay.IGame) error {
 	if game == nil {
 		return fmt.Errorf("Game with code \"%s\" does not exist", code)
 	} else if game.GetPlayerCount() == 10 {
@@ -46,13 +46,13 @@ func validateGame(code string, game *gameplay.Game) error {
 	return nil
 }
 
-func validateName(name string, game *gameplay.Game) error {
+func validateName(name string, game gameplay.IGame) error {
 	if len(name) == 0 {
 		return errors.New("Please enter a username")
-	} else if len(name) < 3 {
+	} else if len(name) <= 3 {
 		return errors.New("Please enter a username with at least 3 characters")
-	} else if len(name) > 20 {
-		return errors.New("Please enter a username with less than 20 characters")
+	} else if len(name) > 15 {
+		return errors.New("Please enter a username with less than 15 characters")
 	} else if game != nil && game.UsernameTaken(name) {
 		return fmt.Errorf("The username \"%s\" has already been taken", name)
 	}
@@ -61,15 +61,15 @@ func validateName(name string, game *gameplay.Game) error {
 }
 
 // InfoAPI func
-func (mgr *Manager) InfoAPI(w http.ResponseWriter, r *http.Request) {
+func (mgr *Manager) InfoEndpoint(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	players := 0
-	for _, managed := range mgr.managedGames {
-		players += managed.game.GetPlayerCount()
+	for _, game := range mgr.games {
+		players += game.GetPlayerCount()
 	}
 
 	bytes, _ := json.Marshal(&infoJSON{
-		LiveGames:   len(mgr.managedGames),
+		LiveGames:   len(mgr.games),
 		LivePlayers: players,
 	})
 
@@ -77,7 +77,7 @@ func (mgr *Manager) InfoAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 // GameCreateAPI func
-func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
+func (mgr *Manager) GameCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	name := r.URL.Query().Get("name")
 
@@ -91,7 +91,7 @@ func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, _ := mgr.CreateGameDefault()
+	code, _ := mgr.CreateDefaultGame()
 
 	w.Write(marshall(&createJSON{
 		Code:    code,
@@ -101,7 +101,7 @@ func (mgr *Manager) GameCreateAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 // GameJoinAPI func
-func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
+func (mgr *Manager) GameJoinEndpoint(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -118,15 +118,11 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := strings.ToUpper(r.URL.Query().Get("code"))
-	name := r.URL.Query().Get("name")
+	query := r.URL.Query()
+	code := strings.ToUpper(query.Get("code"))
+	name := query.Get("name")
 
-	managedGame := mgr.get(code)
-	var game *gameplay.Game
-	if managedGame != nil {
-		game = managedGame.game
-	}
-
+	game := mgr.get(code)
 	client := ws.NewClient(conn, name)
 
 	// Validate the username
@@ -156,18 +152,10 @@ func (mgr *Manager) GameJoinAPI(w http.ResponseWriter, r *http.Request) {
 	}))
 
 	// Get the name and game code the from the request
-	// go client.WriteMessages()
-	go client.ReceiveMessages(game)
+	go client.SetHandler(game)
 
-	game.Connect(client)    // connect client to the game
-	client.Wait()           // block until the websocket disconnects
-	game.Disconnect(client) // disconnect client from the game
-	managedGame.onDisconnect(mgr, game, code)
-}
-
-// SetupEndpoints for the API
-func (mgr *Manager) SetupEndpoints() {
-	http.HandleFunc("/join", mgr.GameJoinAPI)
-	http.HandleFunc("/create", mgr.GameCreateAPI)
-	http.HandleFunc("/info", mgr.InfoAPI)
+	game.Connect(client)               // connect client to the game
+	client.Wait()                      // block until the websocket disconnects
+	game.Disconnect(client)            // disconnect client from the game
+	game.OnDisconnect(mgr, game, code) // call the onDisconnect hook
 }

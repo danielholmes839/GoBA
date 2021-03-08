@@ -10,69 +10,69 @@ import (
 
 // ManagedGame struct
 type ManagedGame struct {
-	game         *gameplay.Game
-	onDisconnect DisconnectHook
+	gameplay.Game
+	OnDisconnect DisconnectHook
 }
 
 // Manager struct
 type Manager struct {
-	managedGames map[string]*ManagedGame
-	accessing    *sync.Mutex
-	editing      *sync.Mutex
+	sync.Mutex
+	games map[string]*ManagedGame
 }
 
 // NewGameManager func
 func NewGameManager() *Manager {
 	return &Manager{
-		managedGames: make(map[string]*ManagedGame),
-		accessing:    &sync.Mutex{},
-		editing:      &sync.Mutex{},
+		sync.Mutex{},
+		make(map[string]*ManagedGame),
 	}
 }
 
 // StopGame func
-func (mgr *Manager) StopGame(code string) error {
-	mgr.editing.Lock()
-	defer mgr.editing.Unlock()
+func (mgr *Manager) Stop(code string) error {
+	mgr.Lock()
+	defer mgr.Unlock()
+
+	game := mgr.get(code)
 
 	// The game does not exist
-	managedGame := mgr.get(code)
-	if managedGame == nil {
+	if game == nil {
 		return errors.New("This game cannot be found")
 	}
 
 	// The game is stopped
-	success := managedGame.game.Stop()
-	if !success {
-		return errors.New("This game is not running")
+	if err := game.Stop(); err != nil {
+		return err
 	}
 
-	delete(mgr.managedGames, code)
+	delete(mgr.games, code)
 	return nil
 }
 
-// CreateGameDefault - create a game with particular code
-func (mgr *Manager) CreateGameDefault() (string, *gameplay.Game) {
-	mgr.editing.Lock()
-	defer mgr.editing.Unlock()
+func (mgr *Manager) CreateDefaultGame() (string, *gameplay.Game) {
+	mgr.Lock()
+	defer mgr.Unlock()
 
-	code := mgr.createUniqueGameCode()
+	// Create the game
 	game := gameplay.NewGame(64)
-	mgr.set(code, &ManagedGame{game, DefaultDisconnectHook})
+	go game.Run()
+
+	// Set the game 
+	code := mgr.createUniqueGameCode()
+	mgr.set(code, &ManagedGame{*game, DefaultDisconnectHook})
 
 	// Stop the game after 15 minutes
 	go func() {
 		time.Sleep(time.Minute * 15)
-		mgr.StopGame(code)
+		mgr.Stop(code)
 	}()
 
 	return code, game
 }
 
-// CreateGameManually func
-func (mgr *Manager) CreateGameManually(code string, onDisconnect DisconnectHook) error {
-	mgr.editing.Lock()
-	defer mgr.editing.Unlock()
+func (mgr *Manager) CreateCustomGame(code string, onDisconnect DisconnectHook) error {
+	mgr.Lock()
+	defer mgr.Unlock()
 
 	// Don't do anything on disconnect by default
 	if onDisconnect == nil {
@@ -80,13 +80,14 @@ func (mgr *Manager) CreateGameManually(code string, onDisconnect DisconnectHook)
 	}
 
 	// Check if the code is available
-	if !mgr.taken(code) {
+	if mgr.taken(code) {
 		return errors.New("This code is already taken")
 	}
 
 	// Create the game
 	game := gameplay.NewGame(64)
-	mgr.set(code, &ManagedGame{game, onDisconnect})
+	go game.Run()
+	mgr.set(code, &ManagedGame{*game, onDisconnect})
 
 	return nil
 }
@@ -104,24 +105,20 @@ func (mgr *Manager) createGameCode() string {
 // CreateGameCode - SHOULD ONLY BE USED WHEN mgr.creating IS LOCKED
 func (mgr *Manager) createUniqueGameCode() string {
 	code := mgr.createGameCode()
-	for !mgr.taken(code) {
+	for mgr.taken(code) {
 		code = mgr.createGameCode()
 	}
 	return code
 }
 
 func (mgr *Manager) taken(code string) bool {
-	return mgr.get(code) == nil
+	return mgr.get(code) != nil
 }
 
 func (mgr *Manager) get(code string) *ManagedGame {
-	mgr.accessing.Lock()
-	defer mgr.accessing.Unlock()
-	return mgr.managedGames[code]
+	return mgr.games[code]
 }
 
-func (mgr *Manager) set(code string, managedGame *ManagedGame) {
-	mgr.accessing.Lock()
-	defer mgr.accessing.Unlock()
-	mgr.managedGames[code] = managedGame
+func (mgr *Manager) set(code string, game *ManagedGame) {
+	mgr.games[code] = game
 }
