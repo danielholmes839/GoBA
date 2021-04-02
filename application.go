@@ -15,18 +15,8 @@ func config(key string, defaultValue string) string {
 	return value
 }
 
-func main() {
-	port := config("PORT", "5000")
-	room := config("ROOM", "TEST")
-
-	// Create the game manager
-	mgr := game.NewGameManager()
-	mgr.CreateCustomGame(room, nil)
-
-	http.HandleFunc("/join", mgr.GameJoinEndpoint)
-	http.HandleFunc("/create", mgr.GameCreateEndpoint)
-	http.HandleFunc("/info", mgr.InfoEndpoint)
-
+func serveFiles() {
+	// Serve files in ./client
 	fs := http.FileServer(http.Dir("./client"))
 	http.Handle("/client/", http.StripPrefix("/client/", fs))
 
@@ -34,7 +24,18 @@ func main() {
 	http.HandleFunc("/game", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./client/index.html")
 	})
+}
 
+func main() {
+	port := config("PORT", "5000")
+	room := config("ROOM", "TEST")
+
+	mgr := game.NewGameManager()
+	mgr.SetupEndpoints()
+	mgr.CreateGameManually(room, nil)
+
+	serveFiles()
+
+	// Listen
 	http.ListenAndServe(":"+port, nil)
-
 }

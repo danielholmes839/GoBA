@@ -8,33 +8,34 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Handler interface {
-	Handle(*ClientEvent)
-}
-
 // Client struct
 type Client struct {
-	*sync.Mutex
 	id            uuid.UUID
-	username      string
+	name          string
 	conn          *websocket.Conn
-	running       *sync.WaitGroup
+	closed        bool
+	closedWg      *sync.WaitGroup
+	writing       *sync.Mutex
+	write         chan []byte
 	subscriptions map[*Subscription]bool
 }
 
 // NewClient func
-func NewClient(conn *websocket.Conn, username string) *Client {
+func NewClient(conn *websocket.Conn, name string) *Client {
 	client := &Client{
-		Mutex:         &sync.Mutex{},
-		id:            uuid.New(),
-		username:      username,
-		conn:          conn,
-		running:       &sync.WaitGroup{},
+		id:   uuid.New(),
+		name: name,
+		conn: conn,
+
+		closed:        false,
+		closedWg:      &sync.WaitGroup{},
+		writing:       &sync.Mutex{},
+		write:         make(chan []byte),
 		subscriptions: make(map[*Subscription]bool),
 	}
 
 	// Add to the wait group
-	client.running.Add(1)
+	client.closedWg.Add(1)
 	fmt.Printf("client:%s has connected\n", client.id)
 	return client
 }
@@ -45,12 +46,12 @@ func (client *Client) GetID() uuid.UUID {
 }
 
 // GetName func
-func (client *Client) GetUsername() string {
-	return client.username
+func (client *Client) GetName() string {
+	return client.name
 }
 
 // ReceiveMessages - read incoming messages, break when the connection is closed
-func (client *Client) SetHandler(handler Handler) {
+func (client *Client) ReceiveMessages(handler ClientEventHandler) {
 	for {
 		// Read message
 		_, message, err := client.conn.ReadMessage()
@@ -67,8 +68,8 @@ func (client *Client) SetHandler(handler Handler) {
 
 // Write bytes to client
 func (client *Client) Write(data []byte) {
-	client.Lock()
-	defer client.Unlock()
+	client.writing.Lock()
+	defer client.writing.Unlock()
 
 	// Write the message
 	client.conn.WriteMessage(websocket.TextMessage, data)
@@ -76,11 +77,11 @@ func (client *Client) Write(data []byte) {
 
 // WriteMessage - write a message to this client (ServerEvent category will always be "personal")
 func (client *Client) WriteMessage(eventName string, data []byte) {
-	client.Lock()
-	defer client.Unlock()
+	client.writing.Lock()
+	defer client.writing.Unlock()
 
 	// Write the message
-	client.conn.WriteMessage(websocket.TextMessage, NewServerEvent("direct", eventName, data).Serialize())
+	client.conn.WriteMessage(websocket.TextMessage, NewServerEvent("personal", eventName, data).Serialize())
 }
 
 // Subscribe func
@@ -97,25 +98,26 @@ func (client *Client) Unsubscribe(subscription *Subscription) {
 
 // Wait - blocks until the client closes
 func (client *Client) Wait() {
-	client.running.Wait()
+	client.closedWg.Wait()
 }
 
-// Close func
+// Close the client
 func (client *Client) Close() {
-	client.Lock()
-	defer client.Unlock()
+	client.writing.Lock()				// Don't close while writing
+	defer client.writing.Unlock()
 
-	if client.running == nil {
+	if client.closed {
 		return
 	}
+	client.closed = true
 
 	for subscription := range client.subscriptions {
 		client.Unsubscribe(subscription)
 	}
 
+	close(client.write)
 	client.conn.Close()
-	client.running.Done()
-	client.running = nil
+	client.closedWg.Done()
 
 	fmt.Printf("client:%s has disconnected\n", client.id)
 }

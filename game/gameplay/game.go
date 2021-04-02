@@ -1,21 +1,12 @@
 package gameplay
 
 import (
-	"errors"
 	"fmt"
 	"server/game/gameplay/geometry"
 	"server/ws"
+	"sync"
 	"time"
 )
-
-type IGame interface {
-	Connect(*ws.Client) error
-	Disconnect(*ws.Client) error
-	Run()
-	Stop() error
-	UsernameTaken(name string) bool
-	GetPlayerCount() int
-}
 
 // ClientInfo struct
 type ClientInfo struct {
@@ -27,7 +18,9 @@ type ClientInfo struct {
 // Game struct
 type Game struct {
 	// Game settings
-	tps int // "Ticks per second"
+	tps         int        // "Ticks per second" the number of
+	running     bool       // true when the game is running
+	runningLock sync.Mutex // Locked while stopping the game
 
 	// Channels
 	connect     chan *ws.Client
@@ -53,6 +46,7 @@ type Game struct {
 func NewGame(tps int) *Game {
 	g := &Game{
 		tps:         tps,
+		running:     true,
 		connect:     make(chan *ws.Client),
 		disconnect:  make(chan *ws.Client),
 		stop:        make(chan bool),
@@ -88,6 +82,8 @@ func NewGame(tps int) *Game {
 	g.teams[NewTeam("Red Team", "#ff0000", geometry.NewPoint(1500, 200))] = struct{}{}
 	g.teams[NewTeam("Blue Team", "#0000ff", geometry.NewPoint(1500, 2800))] = struct{}{}
 
+	go g.run()
+
 	return g
 }
 
@@ -101,7 +97,7 @@ func (game *Game) Handle(event *ws.ClientEvent) {
 }
 
 // Run func
-func (game *Game) Run() {
+func (game *Game) run() {
 	// switch between processing game ticks, events, connecting/disconnecting clients from the game
 	tick := time.NewTicker(time.Duration(int(time.Second) / game.tps))
 
@@ -109,18 +105,18 @@ func (game *Game) Run() {
 		close(game.connect)
 		close(game.disconnect)
 		close(game.playerCount)
-		close(game.stop)
 
 		for client := range game.clients {
 			game.disconnectClient(client)
 		}
 
 		for team := range game.teams {
-			team.events.Stop()
+			team.events.Close()
 		}
 
-		game.global.Stop()
-
+		game.global.Close()
+		game.stop <- true
+		close(game.stop)
 	}()
 
 	for {
@@ -135,6 +131,7 @@ func (game *Game) Run() {
 
 		case <-game.stop:
 			// Stop the game
+			game.running = false
 			return
 
 		case <-tick.C:
@@ -147,33 +144,59 @@ func (game *Game) Run() {
 }
 
 // Connect clients to the game
-func (game *Game) Connect(client *ws.Client) error {
-	select {
-	case game.connect <- client:
-		return nil
-	default:
-		return errors.New("This game has ended")
+func (game *Game) Connect(client *ws.Client) {
+	if game.running {
+		game.connect <- client
 	}
 }
 
 // Disconnect clients from the game
-func (game *Game) Disconnect(client *ws.Client) error {
-	select {
-	case game.disconnect <- client:
-		return nil
-	default:
-		return errors.New("This game has ended")
+func (game *Game) Disconnect(client *ws.Client) {
+	if game.running {
+		game.disconnect <- client
 	}
 }
 
 // Stop the game - returns false if the game was already stopped
-func (game *Game) Stop() error {
-	select {
-	case game.stop <- true:
-		return nil
-	default:
-		return errors.New("This game has ended")
+func (game *Game) Stop() bool {
+	game.runningLock.Lock()
+	defer game.runningLock.Unlock()
+
+	if game.running {
+		game.running = false
+		game.stop <- true
+		<-game.stop
+		return true
 	}
+
+	return false
+}
+
+func (game *Game) connectClient(client *ws.Client) {
+	// Add client to the game
+	game.usernames[client.GetName()] = true
+	client.Subscribe(game.global)
+	client.WriteMessage("setup", NewSetupUpdate(game, client))
+
+	champion := NewChampion(client.GetID())
+	team := game.getNextTeam()
+	team.addClient(client, champion)
+
+	game.createClientInfo(client, champion, team)
+
+	// Send clients the updated teams
+	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
+}
+
+func (game *Game) disconnectClient(client *ws.Client) {
+	// Disconnect the client
+	game.getClientTeam(client).removeClient(client) // Remove client from team
+	delete(game.usernames, client.GetName())        // Remove client username from the game
+	delete(game.clients, client)                    // Remove client from game
+	client.Close()
+
+	// Send clients the updated teams
+	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
 }
 
 // UsernameTaken func
@@ -223,32 +246,4 @@ func (game *Game) createClientInfo(client *ws.Client, champion *Champion, team *
 	// Set the info (team and champion) of the client
 	score := NewScore(0, 0, 0)
 	game.clients[client] = &ClientInfo{champion: champion, team: team, score: score}
-}
-
-func (game *Game) connectClient(client *ws.Client) {
-	// Add client to the game
-	game.usernames[client.GetUsername()] = true
-	client.Subscribe(game.global)
-	client.WriteMessage("setup", NewSetupUpdate(game, client))
-
-	champion := NewChampion(client.GetID())
-	team := game.getNextTeam()
-	team.addClient(client, champion)
-
-	game.createClientInfo(client, champion, team)
-
-	// Send clients the updated teams
-	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
-}
-
-func (game *Game) disconnectClient(client *ws.Client) {
-	// Disconnect the client
-	client.Close()
-	game.getClientTeam(client).removeClient(client) // Remove client from team
-
-	delete(game.usernames, client.GetUsername()) // Remove client username from the game
-	delete(game.clients, client)             // Remove client from game
-
-	// Send clients the updated teams
-	game.global.Broadcast("update-teams", NewTeamsUpdate(game))
 }

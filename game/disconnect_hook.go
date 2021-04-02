@@ -1,21 +1,18 @@
 package game
 
-import "server/game/gameplay"
+// DisconnectHandler - executed when a player disconnects
+// - Currently used to stop the game when the last player disconnects
+type DisconnectHook func(mgr *Manager, game *ManagedGame, code string)
 
-// DisconnectHook
-// Currently used to stop the game when the last player disconnects
-type DisconnectHook func(mgr *Manager, game gameplay.IGame, code string)
-
-// DefaultDisconnectHandler
-// stops the game when it hits 0 players
-func DefaultDisconnectHook(mgr *Manager, game gameplay.IGame, code string) {
+// DefaultDisconnectHandler - stop the game when the player count hits 0
+func DefaultDisconnectHook(mgr *Manager, game *ManagedGame, code string) {
 	if game.GetPlayerCount() > 0 {
 		return
 	}
 
-	mgr.Stop(code)
+	mgr.StopGame(code)
 }
 
-// EmptyDisconnectHandler
-func EmptyDisconnectHook(mgr *Manager, game gameplay.IGame, code string) {
+// EmptyDisconnectHandler - do nothing
+func EmptyDisconnectHook(mgr *Manager, game *ManagedGame, code string) {
 }

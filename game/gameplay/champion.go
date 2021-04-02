@@ -11,16 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func direction(a int) int {
-	if a == 0 {
-		return 0
-	} else if a < 0 {
-		return -1
-	} else {
-		return 1
-	}
-}
-
 // Champion struct
 type Champion struct {
 	id        uuid.UUID
@@ -152,7 +142,7 @@ func (champ *Champion) move(game *Game) {
 func (champ *Champion) moveX(game *Game, speedX int) {
 	dirX := direction(speedX)
 	position := champ.hitbox
-
+	
 	position.Shift(speedX, 0)
 	for _, wall := range game.walls {
 		if !wall.HitsCircle(champ.hitbox) {

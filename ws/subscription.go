@@ -1,9 +1,6 @@
 package ws
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 // Subscription type similar to https://github.com/gorilla/websocket/blob/master/examples/chat/hub.go
 
@@ -11,7 +8,7 @@ import (
 type Subscription struct {
 	name        string
 	clients     map[*Client]bool
-	stop        chan bool
+	close       chan bool
 	broadcast   chan []byte
 	subscribe   chan *Client
 	unsubscribe chan *Client
@@ -22,7 +19,7 @@ func NewSubscription(name string) *Subscription {
 	subscription := &Subscription{
 		name:        name,
 		clients:     make(map[*Client]bool),
-		stop:        make(chan bool),
+		close:       make(chan bool),
 		broadcast:   make(chan []byte),
 		subscribe:   make(chan *Client),
 		unsubscribe: make(chan *Client)}
@@ -54,12 +51,12 @@ func (s *Subscription) run() {
 				client.Write(message)
 			}
 
-		case <-s.stop:
+		case <-s.close:
 			for client := range s.clients {
 				client.Unsubscribe(s)
 			}
 			close(s.broadcast)
-			close(s.stop)
+			close(s.close)
 			close(s.subscribe)
 			close(s.unsubscribe)
 			return
@@ -68,13 +65,8 @@ func (s *Subscription) run() {
 }
 
 // Close the subscription
-func (s *Subscription) Stop() error {
-	select {
-	case s.stop <- true:
-		return nil
-	default:
-		return errors.New("Subscription is already closed")
-	}
+func (s *Subscription) Close() {
+	s.close <- true
 }
 
 // Broadcast func
