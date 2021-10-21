@@ -21,7 +21,7 @@ func serveFiles() {
 	http.Handle("/client/", http.StripPrefix("/client/", fs))
 
 	// Serve the index.html at /game
-	http.HandleFunc("/game", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./client/index.html")
 	})
 }
